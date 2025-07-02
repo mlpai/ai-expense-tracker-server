@@ -10,16 +10,16 @@ export default function createUserRoutes(userController: UsersController) {
    *   get:
    *     summary: Get all users
    *     description: Returns a list of all users
+   *     tags:
+   *       - Users
    *     responses:
-   *       "200":
+   *       200:
    *         description: A list of users
    *         content:
    *           application/json:
    *             schema:
-   *               type: array
-   *               items:
-   *                 $ref: "#/components/schemas/User"
-   *       "500":
+   *               $ref: "#/components/schemas/UsersResponse"
+   *       500:
    *         description: Internal server error
    *         content:
    *           application/json:
@@ -34,26 +34,29 @@ export default function createUserRoutes(userController: UsersController) {
    *   get:
    *     summary: Get a user by ID
    *     description: Returns a user by ID
+   *     tags:
+   *       - Users
    *     parameters:
    *       - name: id
    *         in: path
    *         required: true
    *         schema:
    *           type: string
+   *         description: The ID of the user
    *     responses:
-   *       "200":
+   *       200:
    *         description: A user by ID
    *         content:
    *           application/json:
    *             schema:
-   *               $ref: "#/components/schemas/User"
-   *       "404":
+   *               $ref: "#/components/schemas/UserResponse"
+   *       404:
    *         description: User not found
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/Error"
-   *       "500":
+   *       500:
    *         description: Internal server error
    *         content:
    *           application/json:
@@ -68,6 +71,8 @@ export default function createUserRoutes(userController: UsersController) {
    *   post:
    *     summary: Create a user
    *     description: Creates a new user
+   *     tags:
+   *       - Users
    *     requestBody:
    *       required: true
    *       content:
@@ -90,19 +95,19 @@ export default function createUserRoutes(userController: UsersController) {
    *               - password
    *               - name
    *     responses:
-   *       "201":
-   *         description: User created
+   *       201:
+   *         description: User created successfully
    *         content:
    *           application/json:
    *             schema:
-   *               $ref: "#/components/schemas/User"
-   *       "400":
+   *               $ref: "#/components/schemas/UserResponse"
+   *       400:
    *         description: Bad request
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/Error"
-   *       "500":
+   *       500:
    *         description: Internal server error
    *         content:
    *           application/json:
@@ -110,6 +115,53 @@ export default function createUserRoutes(userController: UsersController) {
    *               $ref: "#/components/schemas/Error"
    */
   router.post("/", userController.createUser);
+
+  /**
+   * @openapi
+   * /api/v1/users/login:
+   *   post:
+   *     summary: Login a user
+   *     description: Logs in a user
+   *     tags:
+   *       - Users
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               email:
+   *                 type: string
+   *                 format: email
+   *                 description: User email address
+   *               password:
+   *                 type: string
+   *                 description: User password
+   *             required:
+   *               - email
+   *               - password
+   *     responses:
+   *       200:
+   *         description: User logged in successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/LoginResponse"
+   *       400:
+   *         description: Bad request
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/Error"
+   *       500:
+   *         description: Internal server error
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/Error"
+   */
+  router.post("/login", userController.loginUser);
 
   return router;
 }

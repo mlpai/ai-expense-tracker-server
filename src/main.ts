@@ -36,6 +36,12 @@ function createApp() {
   // API routes
   app.use("/api/v1", router);
 
+  // Swagger JSON endpoint
+  app.get("/api-docs/swagger.json", (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    res.send(swaggerSpec);
+  });
+
   // Swagger docs
   app.use(
     "/api-docs",
@@ -56,7 +62,6 @@ function createApp() {
       res: express.Response,
       next: express.NextFunction
     ) => {
-      console.error(err.stack);
       // write to error log file in best way
       fs.appendFileSync(
         errorLogPath,

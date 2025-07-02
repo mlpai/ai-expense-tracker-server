@@ -238,6 +238,91 @@ const options = {
           },
           required: ["message", "status"],
         },
+        UserResponse: {
+          type: "object",
+          properties: {
+            success: {
+              type: "boolean",
+              description: "Indicates if the request was successful",
+            },
+            data: {
+              $ref: "#/components/schemas/User",
+              description: "User data",
+            },
+          },
+          required: ["success", "data"],
+        },
+        UsersResponse: {
+          type: "object",
+          properties: {
+            success: {
+              type: "boolean",
+              description: "Indicates if the request was successful",
+            },
+            data: {
+              type: "array",
+              items: {
+                $ref: "#/components/schemas/User",
+              },
+              description: "Array of users",
+            },
+          },
+          required: ["success", "data"],
+        },
+        LoginResponse: {
+          type: "object",
+          properties: {
+            success: {
+              type: "boolean",
+              description: "Indicates if the login was successful",
+            },
+            data: {
+              type: "object",
+              properties: {
+                user: {
+                  $ref: "#/components/schemas/User",
+                },
+                token: {
+                  type: "string",
+                  description: "JWT authentication token",
+                },
+              },
+              required: ["user", "token"],
+            },
+          },
+          required: ["success", "data"],
+        },
+        BankAccountResponse: {
+          type: "object",
+          properties: {
+            success: {
+              type: "boolean",
+              description: "Indicates if the request was successful",
+            },
+            data: {
+              $ref: "#/components/schemas/BankAccount",
+              description: "Bank account data",
+            },
+          },
+          required: ["success", "data"],
+        },
+        BankAccountsResponse: {
+          type: "object",
+          properties: {
+            success: {
+              type: "boolean",
+              description: "Indicates if the request was successful",
+            },
+            data: {
+              type: "array",
+              items: {
+                $ref: "#/components/schemas/BankAccount",
+              },
+              description: "Array of bank accounts",
+            },
+          },
+          required: ["success", "data"],
+        },
       },
       securitySchemes: {
         bearerAuth: {
@@ -249,7 +334,7 @@ const options = {
     },
     security: [{ bearerAuth: [] }],
   },
-  apis: ["./src/routes/*.ts"],
+  apis: ["./src/routes/*.ts", "./src/routes/**/*.ts"],
   basePath: "/api/v1",
 };
 
