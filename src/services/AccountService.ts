@@ -1,5 +1,4 @@
-import { PrismaClient } from "@prisma/client";
-import { BankAccount } from "../../generated/prisma";
+import { BankAccount, PrismaClient } from "../../generated/prisma";
 
 export class AccountService {
   constructor(private readonly prisma: PrismaClient) {}
@@ -35,8 +34,10 @@ export class AccountService {
       const newAccount = await this.prisma.bankAccount.create({
         data: account,
       });
+      console.log(newAccount);
       return newAccount;
     } catch (error) {
+      console.log(error);
       throw new Error("Failed to create account");
     }
   }

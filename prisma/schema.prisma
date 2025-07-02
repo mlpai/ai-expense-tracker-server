@@ -14,7 +14,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 model User {
   id             String    @id @default(uuid())
   email          String    @unique
@@ -25,9 +24,13 @@ model User {
 
   bankAccounts   BankAccount[]
   expenses       Expense[]
+  deposits       Deposit[]
+  recurringExpenses RecurringExpense[]
+  receipts       Receipt[]
   budgets        Budget[]
   aiSuggestions  AiSuggestion[]
   monthlyReports MonthlyReport[]
+  notifications  Notification[]
 }
 
 model BankAccount {
@@ -36,22 +39,50 @@ model BankAccount {
   userId         String
   name           String
   accountNumber  String   @unique
+  balance        Float    @default(0)
   bankName       String
   isDefault      Boolean  @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   expenses       Expense[]
-  budgets        Budget[]
+  deposits       Deposit[]
+}
+
+model ExpenseCategory {
+  id             String    @id @default(uuid())
+  name           String    @unique
+  description    String?
+  icon           String?   // For UI display
+  color          String?   // For UI display
+  isDefault      Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  expenseTypes   ExpenseType[]
 }
 
 model ExpenseType {
   id             String    @id @default(uuid())
   name           String    @unique
   description    String?
+  categoryId     String
+  category       ExpenseCategory @relation(fields: [categoryId], references: [id])
   createdAt      DateTime  @default(now())
 
   expenses       Expense[]
+  recurringExpenses RecurringExpense[]
+}
+
+model DepositType {
+  id             String    @id @default(uuid())
+  name           String    @unique
+  description    String?
+  icon           String?
+  color          String?
+  createdAt      DateTime  @default(now())
+
+  deposits       Deposit[]
 }
 
 model Expense {
@@ -65,18 +96,73 @@ model Expense {
   amount         Decimal       @db.Decimal(12, 2)
   note           String?
   date           DateTime      @default(now())
+  isRecurring    Boolean       @default(false)
+  recurringExpenseId String?   // Reference to recurring expense if applicable
+  receiptId      String?       // Reference to receipt if scanned
   createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @default(now())
+
+  receipt        Receipt?      @relation(fields: [receiptId], references: [id])
+  recurringExpense RecurringExpense? @relation(fields: [recurringExpenseId], references: [id])
+}
+
+model Deposit {
+  id             String        @id @default(uuid())
+  user           User          @relation(fields: [userId], references: [id])
+  userId         String
+  bankAccount    BankAccount   @relation(fields: [bankAccountId], references: [id])
+  bankAccountId  String
+  depositType    DepositType   @relation(fields: [depositTypeId], references: [id])
+  depositTypeId  String
+  amount         Decimal       @db.Decimal(12, 2)
+  note           String?
+  date           DateTime      @default(now())
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @default(now())
+}
+
+model RecurringExpense {
+  id             String        @id @default(uuid())
+  user           User          @relation(fields: [userId], references: [id])
+  userId         String
+  expenseType    ExpenseType   @relation(fields: [expenseTypeId], references: [id])
+  expenseTypeId  String
+  amount         Decimal       @db.Decimal(12, 2)
+  note           String?
+  frequency      String        // 'DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'
+  startDate      DateTime
+  endDate        DateTime?     // null for indefinite
+  nextDueDate    DateTime
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @default(now())
+
+  expenses       Expense[]
+}
+
+model Receipt {
+  id             String    @id @default(uuid())
+  user           User      @relation(fields: [userId], references: [id])
+  userId         String
+  imageUrl       String
+  originalText   String?   // Raw OCR text
+  processedData  Json?     // AI processed data
+  status         String    @default("PENDING") // 'PENDING', 'PROCESSED', 'FAILED'
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @default(now())
+
+  expenses       Expense[]
 }
 
 model Budget {
   id             String        @id @default(uuid())
   user           User          @relation(fields: [userId], references: [id])
   userId         String
-  bankAccount    BankAccount   @relation(fields: [bankAccountId], references: [id])
-  bankAccountId  String
   month          Int
   year           Int
   amountLimit    Decimal       @db.Decimal(12, 2)
+  spentAmount    Decimal       @db.Decimal(12, 2) @default(0)
+  thresholdPercentage Int      @default(80) // Alert when 80% of budget is spent
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
@@ -89,6 +175,7 @@ model BudgetAlert {
   budgetId       String
   alertType      String     // 'THRESHOLD_REACHED' | 'EXCEEDED'
   message        String
+  isRead         Boolean    @default(false)
   createdAt      DateTime   @default(now())
 }
 
@@ -98,6 +185,9 @@ model AiSuggestion {
   userId         String
   title          String
   suggestion     String
+  category       String    @default("BUDGET") // 'BUDGET', 'SAVINGS', 'SPENDING_PATTERN', 'INVESTMENT'
+  priority       String    @default("MEDIUM") // 'LOW', 'MEDIUM', 'HIGH'
+  isRead         Boolean   @default(false)
   createdAt      DateTime  @default(now())
 }
 
@@ -108,6 +198,21 @@ model MonthlyReport {
   month          Int
   year           Int
   totalExpense   Decimal   @db.Decimal(12, 2)
+  totalIncome    Decimal   @db.Decimal(12, 2) @default(0)
+  netSavings     Decimal   @db.Decimal(12, 2) @default(0)
+  budgetStatus   String    @default("ON_TRACK") // 'UNDER_BUDGET', 'ON_TRACK', 'OVER_BUDGET'
   generatedAt    DateTime  @default(now())
   reportData     Json
+  aiInsights     Json?
+}
+
+model Notification {
+  id             String    @id @default(uuid())
+  user           User      @relation(fields: [userId], references: [id])
+  userId         String
+  title           String
+  message         String
+  type            String    // 'BUDGET_ALERT', 'RECURRING_EXPENSE', 'REPORT_READY', 'AI_SUGGESTION'
+  isRead          Boolean   @default(false)
+  createdAt       DateTime  @default(now())
 }

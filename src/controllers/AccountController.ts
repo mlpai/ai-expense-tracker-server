@@ -7,12 +7,26 @@ export default class AccountController {
   getAccountsByUserId = async (req: Request, res: Response) => {
     const userId = req.query.userId as string;
     const accounts = await this.accountService.getAccountsByUserId(userId);
-    res.status(200).json(accounts);
+    res.status(200).json({
+      success: true,
+      data: accounts,
+    });
   };
 
   getAccountById = async (req: Request, res: Response) => {
     const id = req.params.id;
     const account = await this.accountService.getAccount(id);
-    res.status(200).json(account);
+    res.status(200).json({
+      success: true,
+      data: account,
+    });
+  };
+
+  createAccount = async (req: Request, res: Response) => {
+    const account = await this.accountService.createAccount(req.body);
+    res.status(201).json({
+      success: true,
+      data: account,
+    });
   };
 }

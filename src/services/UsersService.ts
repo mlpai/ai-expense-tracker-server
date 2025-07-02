@@ -1,15 +1,24 @@
-import { PrismaClient } from "@prisma/client";
 import { createHmac } from "crypto";
-import { User } from "../../generated/prisma";
+import { PrismaClient, User } from "../../generated/prisma";
 
 export default class UserService {
   constructor(private prisma: PrismaClient) {}
 
   async getUserById(id: string) {
+    // return only basic user info
     return this.prisma.user.findUnique({
       where: { id },
-      include: {
-        bankAccounts: true,
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        bankAccounts: {
+          select: {
+            id: true,
+            accountNumber: true,
+            bankName: true,
+          },
+        },
       },
     });
   }

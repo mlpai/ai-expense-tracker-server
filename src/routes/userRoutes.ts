@@ -18,13 +18,74 @@ export default function createUserRoutes(userController: UsersController) {
    *         content:
    *           application/json:
    *             schema:
-   *               $ref: "#/components/schemas/UsersResponse"
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   description: Indicates if the request was successful
+   *                 data:
+   *                   type: array
+   *                   items:
+   *                     type: object
+   *                     properties:
+   *                       id:
+   *                         type: string
+   *                         description: User ID
+   *                       email:
+   *                         type: string
+   *                         format: email
+   *                         description: User email address
+   *                       name:
+   *                         type: string
+   *                         description: User's full name
+   *                       bankAccounts:
+   *                         type: array
+   *                         items:
+   *                           type: object
+   *                           properties:
+   *                             id:
+   *                               type: string
+   *                             accountNumber:
+   *                               type: string
+   *                             bankName:
+   *                               type: string
+   *                             balance:
+   *                               type: number
+   *                       expenses:
+   *                         type: array
+   *                         items:
+   *                           type: object
+   *                           properties:
+   *                             id:
+   *                               type: string
+   *                             amount:
+   *                               type: number
+   *                             description:
+   *                               type: string
+   *                             date:
+   *                               type: string
+   *                               format: date
+   *                             category:
+   *                               type: string
+   *               required:
+   *                 - success
+   *                 - data
    *       500:
    *         description: Internal server error
    *         content:
    *           application/json:
    *             schema:
-   *               $ref: "#/components/schemas/Error"
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *                   description: Error message
+   *                 status:
+   *                   type: number
+   *                   description: HTTP status code
+   *               required:
+   *                 - message
+   *                 - status
    */
   router.get("/", userController.getAllUsers);
 
@@ -49,19 +110,88 @@ export default function createUserRoutes(userController: UsersController) {
    *         content:
    *           application/json:
    *             schema:
-   *               $ref: "#/components/schemas/UserResponse"
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   description: Indicates if the request was successful
+   *                 data:
+   *                   type: object
+   *                   properties:
+   *                     id:
+   *                       type: string
+   *                       description: User ID
+   *                     email:
+   *                       type: string
+   *                       format: email
+   *                       description: User email address
+   *                     name:
+   *                       type: string
+   *                       description: User's full name
+   *                     bankAccounts:
+   *                       type: array
+   *                       items:
+   *                         type: object
+   *                         properties:
+   *                           id:
+   *                             type: string
+   *                           accountNumber:
+   *                             type: string
+   *                           bankName:
+   *                             type: string
+   *                           balance:
+   *                             type: number
+   *                     expenses:
+   *                       type: array
+   *                       items:
+   *                         type: object
+   *                         properties:
+   *                           id:
+   *                             type: string
+   *                           amount:
+   *                             type: number
+   *                           description:
+   *                             type: string
+   *                           date:
+   *                             type: string
+   *                             format: date
+   *                           category:
+   *                             type: string
+   *               required:
+   *                 - success
+   *                 - data
    *       404:
    *         description: User not found
    *         content:
    *           application/json:
    *             schema:
-   *               $ref: "#/components/schemas/Error"
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *                   description: Error message
+   *                 status:
+   *                   type: number
+   *                   description: HTTP status code
+   *               required:
+   *                 - message
+   *                 - status
    *       500:
    *         description: Internal server error
    *         content:
    *           application/json:
    *             schema:
-   *               $ref: "#/components/schemas/Error"
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *                   description: Error message
+   *                 status:
+   *                   type: number
+   *                   description: HTTP status code
+   *               required:
+   *                 - message
+   *                 - status
    */
   router.get("/:id", userController.getUserById);
 
@@ -100,19 +230,88 @@ export default function createUserRoutes(userController: UsersController) {
    *         content:
    *           application/json:
    *             schema:
-   *               $ref: "#/components/schemas/UserResponse"
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   description: Indicates if the request was successful
+   *                 data:
+   *                   type: object
+   *                   properties:
+   *                     id:
+   *                       type: string
+   *                       description: User ID
+   *                     email:
+   *                       type: string
+   *                       format: email
+   *                       description: User email address
+   *                     name:
+   *                       type: string
+   *                       description: User's full name
+   *                     bankAccounts:
+   *                       type: array
+   *                       items:
+   *                         type: object
+   *                         properties:
+   *                           id:
+   *                             type: string
+   *                           accountNumber:
+   *                             type: string
+   *                           bankName:
+   *                             type: string
+   *                           balance:
+   *                             type: number
+   *                     expenses:
+   *                       type: array
+   *                       items:
+   *                         type: object
+   *                         properties:
+   *                           id:
+   *                             type: string
+   *                           amount:
+   *                             type: number
+   *                           description:
+   *                             type: string
+   *                           date:
+   *                             type: string
+   *                             format: date
+   *                           category:
+   *                             type: string
+   *               required:
+   *                 - success
+   *                 - data
    *       400:
    *         description: Bad request
    *         content:
    *           application/json:
    *             schema:
-   *               $ref: "#/components/schemas/Error"
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *                   description: Error message
+   *                 status:
+   *                   type: number
+   *                   description: HTTP status code
+   *               required:
+   *                 - message
+   *                 - status
    *       500:
    *         description: Internal server error
    *         content:
    *           application/json:
    *             schema:
-   *               $ref: "#/components/schemas/Error"
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *                   description: Error message
+   *                 status:
+   *                   type: number
+   *                   description: HTTP status code
+   *               required:
+   *                 - message
+   *                 - status
    */
   router.post("/", userController.createUser);
 
@@ -147,19 +346,68 @@ export default function createUserRoutes(userController: UsersController) {
    *         content:
    *           application/json:
    *             schema:
-   *               $ref: "#/components/schemas/LoginResponse"
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   description: Indicates if the login was successful
+   *                 data:
+   *                   type: object
+   *                   properties:
+   *                     user:
+   *                       type: object
+   *                       properties:
+   *                         id:
+   *                           type: string
+   *                           description: User ID
+   *                         email:
+   *                           type: string
+   *                           format: email
+   *                           description: User email address
+   *                         name:
+   *                           type: string
+   *                           description: User's full name
+   *                     token:
+   *                       type: string
+   *                       description: JWT authentication token
+   *                   required:
+   *                     - user
+   *                     - token
+   *               required:
+   *                 - success
+   *                 - data
    *       400:
    *         description: Bad request
    *         content:
    *           application/json:
    *             schema:
-   *               $ref: "#/components/schemas/Error"
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *                   description: Error message
+   *                 status:
+   *                   type: number
+   *                   description: HTTP status code
+   *               required:
+   *                 - message
+   *                 - status
    *       500:
    *         description: Internal server error
    *         content:
    *           application/json:
    *             schema:
-   *               $ref: "#/components/schemas/Error"
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *                   description: Error message
+   *                 status:
+   *                   type: number
+   *                   description: HTTP status code
+   *               required:
+   *                 - message
+   *                 - status
    */
   router.post("/login", userController.loginUser);
 

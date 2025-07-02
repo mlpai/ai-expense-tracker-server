@@ -20,19 +20,66 @@ export default function createAccountRoutes(
    *         content:
    *           application/json:
    *             schema:
-   *               $ref: "#/components/schemas/BankAccountsResponse"
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   description: Indicates if the request was successful
+   *                 data:
+   *                   type: array
+   *                   items:
+   *                     type: object
+   *                     properties:
+   *                       id:
+   *                         type: string
+   *                         description: Bank account ID
+   *                       accountNumber:
+   *                         type: string
+   *                         description: Bank account number
+   *                       bankName:
+   *                         type: string
+   *                         description: Name of the bank
+   *                       balance:
+   *                         type: number
+   *                         description: Current balance
+   *                       userId:
+   *                         type: string
+   *                         description: User ID who owns this account
+   *               required:
+   *                 - success
+   *                 - data
    *       500:
    *         description: Internal server error
    *         content:
    *           application/json:
    *             schema:
-   *               $ref: "#/components/schemas/Error"
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *                   description: Error message
+   *                 status:
+   *                   type: number
+   *                   description: HTTP status code
+   *               required:
+   *                 - message
+   *                 - status
    *       400:
    *         description: Bad request
    *         content:
    *           application/json:
    *             schema:
-   *               $ref: "#/components/schemas/Error"
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *                   description: Error message
+   *                 status:
+   *                   type: number
+   *                   description: HTTP status code
+   *               required:
+   *                 - message
+   *                 - status
    */
   router.get("/", accountController.getAccountsByUserId);
 
@@ -57,21 +104,115 @@ export default function createAccountRoutes(
    *         content:
    *           application/json:
    *             schema:
-   *               $ref: "#/components/schemas/BankAccountResponse"
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   description: Indicates if the request was successful
+   *                 data:
+   *                   type: object
+   *                   properties:
+   *                     id:
+   *                       type: string
+   *                       description: Bank account ID
+   *                     accountNumber:
+   *                       type: string
+   *                       description: Bank account number
+   *                     bankName:
+   *                       type: string
+   *                       description: Name of the bank
+   *                     balance:
+   *                       type: number
+   *                       description: Current balance
+   *                     userId:
+   *                       type: string
+   *                       description: User ID who owns this account
+   *               required:
+   *                 - success
+   *                 - data
    *       404:
    *         description: Account not found
    *         content:
    *           application/json:
    *             schema:
-   *               $ref: "#/components/schemas/Error"
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *                   description: Error message
+   *                 status:
+   *                   type: number
+   *                   description: HTTP status code
+   *               required:
+   *                 - message
+   *                 - status
    *       500:
    *         description: Internal server error
    *         content:
    *           application/json:
    *             schema:
-   *               $ref: "#/components/schemas/Error"
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *                   description: Error message
+   *                 status:
+   *                   type: number
+   *                   description: HTTP status code
+   *               required:
+   *                 - message
+   *                 - status
    */
   router.get("/:id", accountController.getAccountById);
+
+  /**
+   * @openapi
+   * /api/v1/accounts:
+   *   post:
+   *     summary: Create an account
+   *     description: Creates a new account for the authenticated user
+   *     tags:
+   *       - Accounts
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *     responses:
+   *       200:
+   *         description: Account created successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   description: Indicates if the request was successful
+   *                 data:
+   *                   type: object
+   *               required:
+   *                 - success
+   *                 - data
+   *       400:
+   *         description: Bad request
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *                   description: Error message
+   *                 status:
+   *                   type: number
+   *                   description: HTTP status code
+   *               required:
+   *                 - message
+   *                 - status
+   */
+  router.post("/", accountController.createAccount);
 
   return router;
 }

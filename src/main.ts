@@ -7,6 +7,7 @@ import router from "./routes";
 import fs from "fs";
 import path from "path";
 import { prisma } from "./utils/prisma";
+import CronJobs from "./cron";
 
 dotenv.config();
 
@@ -25,6 +26,12 @@ function createApp() {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
+  // Serve static files (for uploaded receipts)
+  app.use(
+    "/uploads",
+    express.static(path.join(__dirname, "../public/uploads"))
+  );
+
   // health check
   app.get("/health", (req, res) => {
     // retrun a healthy response with info about server
@@ -36,7 +43,7 @@ function createApp() {
   // API routes
   app.use("/api/v1", router);
 
-  // Swagger JSON endpoint
+  // Swagger JSON endpoint (must come before Swagger UI)
   app.get("/api-docs/swagger.json", (req, res) => {
     res.setHeader("Content-Type", "application/json");
     res.send(swaggerSpec);
@@ -75,6 +82,10 @@ function createApp() {
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Swagger docs at http://localhost:${PORT}/api-docs`);
+
+    // Start cron jobs
+    const cronJobs = new CronJobs();
+    cronJobs.start();
   });
 }
 

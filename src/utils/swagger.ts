@@ -15,6 +15,7 @@ const options = {
         description: "API server",
       },
     ],
+    paths: {},
     components: {
       schemas: {
         User: {
