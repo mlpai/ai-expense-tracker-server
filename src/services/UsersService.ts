@@ -1,16 +1,50 @@
-type User = { id: string; name: string; email: string };
+import { PrismaClient } from "@prisma/client";
+import { User } from "../models/user.models";
+import { createHmac } from "crypto";
 
-const users: User[] = [
-  { id: "1", name: "Alice", email: "alice@example.com" },
-  { id: "2", name: "Bob", email: "bob@example.com" },
-];
+export default class UserService {
+  constructor(private prisma: PrismaClient) {}
 
-export default class UsersService {
-  static getAllUsers(): User[] {
-    return users;
+  async getUserById(id: number) {
+    return this.prisma.user.findUnique({
+      where: { id },
+    });
   }
 
-  static getUserById(id: string): User | undefined {
-    return users.find((u) => u.id === id);
+  async getAllUsers() {
+    return this.prisma.user.findMany();
+  }
+
+  async createUser(user: User) {
+    // use crypto to hash password
+    const passwordHash = createHmac("sha256", process.env.PASSWORD_SALT || "")
+      .update(user.passwordHash)
+      .digest("hex");
+    user.passwordHash = passwordHash;
+
+    return this.prisma.user.create({
+      data: user,
+    });
+  }
+
+  async loginUser(email: string, password: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // use crypto to compare password
+    const passwordHash = createHmac("sha256", process.env.PASSWORD_SALT || "")
+      .update(password)
+      .digest("hex");
+    const isPasswordValid = passwordHash === user.passwordHash;
+    if (!isPasswordValid) {
+      throw new Error("Invalid password");
+    }
+
+    return user;
   }
 }

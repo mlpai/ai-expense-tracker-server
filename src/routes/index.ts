@@ -1,8 +1,21 @@
 import { Router } from "express";
-import usersRouter from "./users";
+import UserService from "../services/UsersService";
+import createUserRoutes from "./userRoutes";
+import UsersController from "../controllers/UsersController";
+import { prisma } from "../utils/prisma";
 
 const router = Router();
 
-router.use("/users", usersRouter);
+// create services
+const userService = new UserService(prisma);
+
+// inject services into controllers
+const userController = new UsersController(userService);
+
+// Register routes
+const userRoutes = createUserRoutes(userController);
+
+// Routes
+router.use("/users", userRoutes);
 
 export default router;

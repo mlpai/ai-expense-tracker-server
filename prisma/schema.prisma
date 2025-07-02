@@ -1,0 +1,113 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+model User {
+  id             String    @id @default(uuid())
+  email          String    @unique
+  passwordHash   String
+  name           String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  bankAccounts   BankAccount[]
+  expenses       Expense[]
+  budgets        Budget[]
+  aiSuggestions  AiSuggestion[]
+  monthlyReports MonthlyReport[]
+}
+
+model BankAccount {
+  id             String   @id @default(uuid())
+  user           User     @relation(fields: [userId], references: [id])
+  userId         String
+  name           String
+  accountNumber  String   @unique
+  bankName       String
+  isDefault      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  expenses       Expense[]
+  budgets        Budget[]
+}
+
+model ExpenseType {
+  id             String    @id @default(uuid())
+  name           String    @unique
+  description    String?
+  createdAt      DateTime  @default(now())
+
+  expenses       Expense[]
+}
+
+model Expense {
+  id             String        @id @default(uuid())
+  user           User          @relation(fields: [userId], references: [id])
+  userId         String
+  bankAccount    BankAccount   @relation(fields: [bankAccountId], references: [id])
+  bankAccountId  String
+  expenseType    ExpenseType   @relation(fields: [expenseTypeId], references: [id])
+  expenseTypeId  String
+  amount         Decimal       @db.Decimal(12, 2)
+  note           String?
+  date           DateTime      @default(now())
+  createdAt      DateTime      @default(now())
+}
+
+model Budget {
+  id             String        @id @default(uuid())
+  user           User          @relation(fields: [userId], references: [id])
+  userId         String
+  bankAccount    BankAccount   @relation(fields: [bankAccountId], references: [id])
+  bankAccountId  String
+  month          Int
+  year           Int
+  amountLimit    Decimal       @db.Decimal(12, 2)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  alerts         BudgetAlert[]
+}
+
+model BudgetAlert {
+  id             String     @id @default(uuid())
+  budget         Budget     @relation(fields: [budgetId], references: [id])
+  budgetId       String
+  alertType      String     // 'THRESHOLD_REACHED' | 'EXCEEDED'
+  message        String
+  createdAt      DateTime   @default(now())
+}
+
+model AiSuggestion {
+  id             String    @id @default(uuid())
+  user           User      @relation(fields: [userId], references: [id])
+  userId         String
+  title          String
+  suggestion     String
+  createdAt      DateTime  @default(now())
+}
+
+model MonthlyReport {
+  id             String    @id @default(uuid())
+  user           User      @relation(fields: [userId], references: [id])
+  userId         String
+  month          Int
+  year           Int
+  totalExpense   Decimal   @db.Decimal(12, 2)
+  generatedAt    DateTime  @default(now())
+  reportData     Json
+}

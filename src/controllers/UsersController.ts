@@ -1,18 +1,45 @@
+import { User } from "../models/user.models";
+import UserService from "../services/UsersService";
 import { Request, Response } from "express";
-import UsersService from "../services/UsersService";
 
 export default class UsersController {
-  static getAllUsers(req: Request, res: Response) {
-    const users = UsersService.getAllUsers();
-    res.json(users);
+  private userService: UserService;
+  constructor(userService: UserService) {
+    this.userService = userService;
   }
 
-  static getUserById(req: Request, res: Response) {
-    const user = UsersService.getUserById(req.params.id);
-    if (user) {
-      res.json(user);
-    } else {
-      res.status(404).json({ message: "User not found" });
-    }
-  }
+  getAllUsers = async (req: Request, res: Response) => {
+    const users = await this.userService.getAllUsers();
+    res.status(200).json({
+      success: true,
+      data: users,
+    });
+  };
+
+  getUserById = async (req: Request, res: Response) => {
+    const user = await this.userService.getUserById(Number(req.params.id));
+    res.status(200).json({
+      success: true,
+      data: user,
+    });
+  };
+
+  createUser = async (req: Request, res: Response) => {
+    const user = await this.userService.createUser(req.body as User);
+    res.status(201).json({
+      success: true,
+      data: user,
+    });
+  };
+
+  loginUser = async (req: Request, res: Response) => {
+    const user = await this.userService.loginUser(
+      req.body.email,
+      req.body.password
+    );
+    res.status(200).json({
+      success: true,
+      data: user,
+    });
+  };
 }
