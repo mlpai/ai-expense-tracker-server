@@ -1,5 +1,6 @@
 import { Router } from "express";
 import ReceiptController from "../controllers/ReceiptController";
+import { authenticateToken } from "../middlewares/auth";
 
 export default function createReceiptRoutes(
   receiptController: ReceiptController
@@ -12,8 +13,10 @@ export default function createReceiptRoutes(
    *   post:
    *     summary: Upload and process a receipt
    *     tags: [Receipts]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.post("/", receiptController.createReceipt);
+  router.post("/", authenticateToken, receiptController.createReceipt);
 
   /**
    * @swagger
@@ -21,8 +24,10 @@ export default function createReceiptRoutes(
    *   get:
    *     summary: Get all receipts for a user
    *     tags: [Receipts]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.get("/", receiptController.getReceiptsByUserId);
+  router.get("/", authenticateToken, receiptController.getReceiptsByUserId);
 
   /**
    * @swagger
@@ -30,8 +35,10 @@ export default function createReceiptRoutes(
    *   get:
    *     summary: Get receipt by ID
    *     tags: [Receipts]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.get("/:id", receiptController.getReceiptById);
+  router.get("/:id", authenticateToken, receiptController.getReceiptById);
 
   /**
    * @swagger
@@ -39,8 +46,10 @@ export default function createReceiptRoutes(
    *   delete:
    *     summary: Delete a receipt
    *     tags: [Receipts]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.delete("/:id", receiptController.deleteReceipt);
+  router.delete("/:id", authenticateToken, receiptController.deleteReceipt);
 
   /**
    * @swagger
@@ -48,8 +57,14 @@ export default function createReceiptRoutes(
    *   post:
    *     summary: Create expense from receipt
    *     tags: [Receipts]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.post("/expense", receiptController.createExpenseFromReceipt);
+  router.post(
+    "/expense",
+    authenticateToken,
+    receiptController.createExpenseFromReceipt
+  );
 
   /**
    * @swagger
@@ -57,8 +72,14 @@ export default function createReceiptRoutes(
    *   get:
    *     summary: Get receipt statistics
    *     tags: [Receipts]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.get("/stats/all", receiptController.getReceiptStats);
+  router.get(
+    "/stats/all",
+    authenticateToken,
+    receiptController.getReceiptStats
+  );
 
   return router;
 }

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import AccountController from "../controllers/AccountController";
+import { authenticateToken } from "../middlewares/auth";
 
 export default function createAccountRoutes(
   accountController: AccountController
@@ -81,7 +82,7 @@ export default function createAccountRoutes(
    *                 - message
    *                 - status
    */
-  router.get("/", accountController.getAccountsByUserId);
+  router.get("/", authenticateToken, accountController.getAccountsByUserId);
 
   /**
    * @openapi
@@ -163,7 +164,7 @@ export default function createAccountRoutes(
    *                 - message
    *                 - status
    */
-  router.get("/:id", accountController.getAccountById);
+  router.get("/:id", authenticateToken, accountController.getAccountById);
 
   /**
    * @openapi
@@ -212,7 +213,7 @@ export default function createAccountRoutes(
    *                 - message
    *                 - status
    */
-  router.post("/", accountController.createAccount);
+  router.post("/", authenticateToken, accountController.createAccount);
 
   return router;
 }

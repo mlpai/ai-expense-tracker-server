@@ -1,4 +1,5 @@
 import { createHmac } from "crypto";
+import jwt from "jsonwebtoken";
 import { PrismaClient, User } from "../../generated/prisma";
 
 export default class UserService {
@@ -28,15 +29,48 @@ export default class UserService {
   }
 
   async createUser(user: User) {
+    // Check if user already exists
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: user.email },
+    });
+
+    if (existingUser) {
+      throw new Error("User with this email already exists");
+    }
+
     // use crypto to hash password
     const passwordHash = createHmac("sha256", process.env.PASSWORD_SALT || "")
       .update(user.passwordHash)
       .digest("hex");
     user.passwordHash = passwordHash;
 
-    return this.prisma.user.create({
+    const newUser = await this.prisma.user.create({
       data: user,
     });
+
+    // Generate JWT token for new user
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      throw new Error("JWT secret not configured");
+    }
+
+    const token = jwt.sign(
+      {
+        userId: newUser.id,
+        email: newUser.email,
+      },
+      jwtSecret,
+      { expiresIn: "7d" }
+    );
+
+    return {
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        name: newUser.name,
+      },
+      token,
+    };
   }
 
   async loginUser(email: string, password: string) {
@@ -57,6 +91,28 @@ export default class UserService {
       throw new Error("Invalid password");
     }
 
-    return user;
+    // Generate JWT token
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      throw new Error("JWT secret not configured");
+    }
+
+    const token = jwt.sign(
+      {
+        userId: user.id,
+        email: user.email,
+      },
+      jwtSecret,
+      { expiresIn: "7d" }
+    );
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+      },
+      token,
+    };
   }
 }

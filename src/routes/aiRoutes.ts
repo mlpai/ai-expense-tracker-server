@@ -1,5 +1,6 @@
 import { Router } from "express";
 import AiController from "../controllers/AiController";
+import { authenticateToken } from "../middlewares/auth";
 
 export default function createAiRoutes(aiController: AiController) {
   const router = Router();
@@ -10,8 +11,10 @@ export default function createAiRoutes(aiController: AiController) {
    *   post:
    *     summary: Generate monthly report
    *     tags: [AI]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.post("/report", aiController.generateMonthlyReport);
+  router.post("/report", authenticateToken, aiController.generateMonthlyReport);
 
   /**
    * @swagger
@@ -19,8 +22,14 @@ export default function createAiRoutes(aiController: AiController) {
    *   post:
    *     summary: Generate AI suggestions
    *     tags: [AI]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.post("/suggestions/generate", aiController.generateAiSuggestions);
+  router.post(
+    "/suggestions/generate",
+    authenticateToken,
+    aiController.generateAiSuggestions
+  );
 
   /**
    * @swagger
@@ -28,8 +37,14 @@ export default function createAiRoutes(aiController: AiController) {
    *   get:
    *     summary: Get all AI suggestions
    *     tags: [AI]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.get("/suggestions/all", aiController.getAiSuggestions);
+  router.get(
+    "/suggestions/all",
+    authenticateToken,
+    aiController.getAiSuggestions
+  );
 
   /**
    * @swagger
@@ -37,8 +52,14 @@ export default function createAiRoutes(aiController: AiController) {
    *   put:
    *     summary: Mark suggestion as read
    *     tags: [AI]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.put("/suggestions/:id/read", aiController.markSuggestionAsRead);
+  router.put(
+    "/suggestions/:id/read",
+    authenticateToken,
+    aiController.markSuggestionAsRead
+  );
 
   return router;
 }

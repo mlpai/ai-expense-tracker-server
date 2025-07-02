@@ -43,33 +43,55 @@ export default class UsersController {
       const userData = req.body;
       userData.passwordHash = req.body.password;
       delete userData.password;
-      const user = await this.userService.createUser(userData as User);
+      const result = await this.userService.createUser(userData as User);
       res.status(201).json({
         success: true,
-        data: user,
+        data: result,
       });
-    } catch (error) {
+    } catch (error: any) {
       res.status(400).json({
         success: false,
-        message: "Invalid user data",
+        message: error.message || "Invalid user data",
       });
     }
   };
 
   loginUser = async (req: Request, res: Response) => {
     try {
-      const user = await this.userService.loginUser(
+      const result = await this.userService.loginUser(
         req.body.email,
         req.body.password
       );
       res.status(200).json({
         success: true,
-        data: user,
+        data: result,
       });
-    } catch (error) {
+    } catch (error: any) {
       res.status(400).json({
         success: false,
-        message: "Invalid email or password",
+        message: error.message || "Invalid email or password",
+      });
+    }
+  };
+
+  getCurrentUser = async (req: Request, res: Response) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: "Authentication required",
+        });
+      }
+
+      const user = await this.userService.getUserById(req.user.id);
+      res.status(200).json({
+        success: true,
+        data: user,
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        message: error.message || "Error getting user profile",
       });
     }
   };

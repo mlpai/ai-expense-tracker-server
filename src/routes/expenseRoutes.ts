@@ -1,5 +1,6 @@
 import { Router } from "express";
 import ExpenseController from "../controllers/ExpenseController";
+import { authenticateToken } from "../middlewares/auth";
 
 export default function createExpenseRoutes(
   expenseController: ExpenseController
@@ -12,8 +13,10 @@ export default function createExpenseRoutes(
    *   post:
    *     summary: Create a new expense
    *     tags: [Expenses]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.post("/", expenseController.createExpense);
+  router.post("/", authenticateToken, expenseController.createExpense);
 
   /**
    * @swagger
@@ -21,8 +24,10 @@ export default function createExpenseRoutes(
    *   get:
    *     summary: Get all expenses for a user
    *     tags: [Expenses]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.get("/", expenseController.getExpensesByUserId);
+  router.get("/", authenticateToken, expenseController.getExpensesByUserId);
 
   /**
    * @swagger
@@ -30,8 +35,10 @@ export default function createExpenseRoutes(
    *   get:
    *     summary: Get expense by ID
    *     tags: [Expenses]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.get("/:id", expenseController.getExpenseById);
+  router.get("/:id", authenticateToken, expenseController.getExpenseById);
 
   /**
    * @swagger
@@ -39,8 +46,10 @@ export default function createExpenseRoutes(
    *   put:
    *     summary: Update an expense
    *     tags: [Expenses]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.put("/:id", expenseController.updateExpense);
+  router.put("/:id", authenticateToken, expenseController.updateExpense);
 
   /**
    * @swagger
@@ -48,8 +57,10 @@ export default function createExpenseRoutes(
    *   delete:
    *     summary: Delete an expense
    *     tags: [Expenses]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.delete("/:id", expenseController.deleteExpense);
+  router.delete("/:id", authenticateToken, expenseController.deleteExpense);
 
   /**
    * @swagger
@@ -57,8 +68,14 @@ export default function createExpenseRoutes(
    *   post:
    *     summary: Create a recurring expense
    *     tags: [Recurring Expenses]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.post("/recurring", expenseController.createRecurringExpense);
+  router.post(
+    "/recurring",
+    authenticateToken,
+    expenseController.createRecurringExpense
+  );
 
   /**
    * @swagger
@@ -66,8 +83,14 @@ export default function createExpenseRoutes(
    *   get:
    *     summary: Get all recurring expenses
    *     tags: [Recurring Expenses]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.get("/recurring/all", expenseController.getRecurringExpensesByUserId);
+  router.get(
+    "/recurring/all",
+    authenticateToken,
+    expenseController.getRecurringExpensesByUserId
+  );
 
   /**
    * @swagger
@@ -75,8 +98,14 @@ export default function createExpenseRoutes(
    *   get:
    *     summary: Get expense summary
    *     tags: [Expenses]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.get("/summary", expenseController.getExpenseSummary);
+  router.get(
+    "/summary",
+    authenticateToken,
+    expenseController.getExpenseSummary
+  );
 
   return router;
 }

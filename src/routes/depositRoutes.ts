@@ -1,5 +1,6 @@
 import { Router } from "express";
 import DepositController from "../controllers/DepositController";
+import { authenticateToken } from "../middlewares/auth";
 
 export default function createDepositRoutes(
   depositController: DepositController
@@ -12,8 +13,10 @@ export default function createDepositRoutes(
    *   post:
    *     summary: Create a new deposit
    *     tags: [Deposits]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.post("/", depositController.createDeposit);
+  router.post("/", authenticateToken, depositController.createDeposit);
 
   /**
    * @swagger
@@ -21,8 +24,10 @@ export default function createDepositRoutes(
    *   get:
    *     summary: Get all deposits for a user
    *     tags: [Deposits]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.get("/", depositController.getDepositsByUserId);
+  router.get("/", authenticateToken, depositController.getDepositsByUserId);
 
   /**
    * @swagger
@@ -30,8 +35,10 @@ export default function createDepositRoutes(
    *   get:
    *     summary: Get deposit by ID
    *     tags: [Deposits]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.get("/:id", depositController.getDepositById);
+  router.get("/:id", authenticateToken, depositController.getDepositById);
 
   /**
    * @swagger
@@ -39,8 +46,10 @@ export default function createDepositRoutes(
    *   put:
    *     summary: Update a deposit
    *     tags: [Deposits]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.put("/:id", depositController.updateDeposit);
+  router.put("/:id", authenticateToken, depositController.updateDeposit);
 
   /**
    * @swagger
@@ -48,8 +57,10 @@ export default function createDepositRoutes(
    *   delete:
    *     summary: Delete a deposit
    *     tags: [Deposits]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.delete("/:id", depositController.deleteDeposit);
+  router.delete("/:id", authenticateToken, depositController.deleteDeposit);
 
   /**
    * @swagger
@@ -57,8 +68,14 @@ export default function createDepositRoutes(
    *   get:
    *     summary: Get all deposit types
    *     tags: [Deposits]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.get("/types/all", depositController.getDepositTypes);
+  router.get(
+    "/types/all",
+    authenticateToken,
+    depositController.getDepositTypes
+  );
 
   /**
    * @swagger
@@ -66,8 +83,10 @@ export default function createDepositRoutes(
    *   post:
    *     summary: Create a new deposit type
    *     tags: [Deposits]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.post("/types", depositController.createDepositType);
+  router.post("/types", authenticateToken, depositController.createDepositType);
 
   return router;
 }

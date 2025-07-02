@@ -17,6 +17,14 @@ const options = {
     ],
     paths: {},
     components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
+          description: "Enter your JWT token in the format: Bearer <token>",
+        },
+      },
       schemas: {
         User: {
           type: "object",
@@ -323,13 +331,6 @@ const options = {
             },
           },
           required: ["success", "data"],
-        },
-      },
-      securitySchemes: {
-        bearerAuth: {
-          type: "http",
-          scheme: "bearer",
-          bearerFormat: "JWT",
         },
       },
     },

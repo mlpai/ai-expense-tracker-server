@@ -1,5 +1,6 @@
 import { Router } from "express";
 import BudgetController from "../controllers/BudgetController";
+import { authenticateToken } from "../middlewares/auth";
 
 export default function createBudgetRoutes(budgetController: BudgetController) {
   const router = Router();
@@ -10,8 +11,10 @@ export default function createBudgetRoutes(budgetController: BudgetController) {
    *   post:
    *     summary: Create a budget
    *     tags: [Budgets]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.post("/", budgetController.createBudget);
+  router.post("/", authenticateToken, budgetController.createBudget);
 
   /**
    * @swagger
@@ -19,8 +22,10 @@ export default function createBudgetRoutes(budgetController: BudgetController) {
    *   get:
    *     summary: Get all budgets for a user
    *     tags: [Budgets]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.get("/", budgetController.getBudgetsByUserId);
+  router.get("/", authenticateToken, budgetController.getBudgetsByUserId);
 
   /**
    * @swagger
@@ -28,8 +33,10 @@ export default function createBudgetRoutes(budgetController: BudgetController) {
    *   get:
    *     summary: Get budget by ID
    *     tags: [Budgets]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.get("/:id", budgetController.getBudgetById);
+  router.get("/:id", authenticateToken, budgetController.getBudgetById);
 
   /**
    * @swagger
@@ -37,8 +44,10 @@ export default function createBudgetRoutes(budgetController: BudgetController) {
    *   put:
    *     summary: Update a budget
    *     tags: [Budgets]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.put("/:id", budgetController.updateBudget);
+  router.put("/:id", authenticateToken, budgetController.updateBudget);
 
   /**
    * @swagger
@@ -46,8 +55,10 @@ export default function createBudgetRoutes(budgetController: BudgetController) {
    *   delete:
    *     summary: Delete a budget
    *     tags: [Budgets]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.delete("/:id", budgetController.deleteBudget);
+  router.delete("/:id", authenticateToken, budgetController.deleteBudget);
 
   /**
    * @swagger
@@ -55,8 +66,10 @@ export default function createBudgetRoutes(budgetController: BudgetController) {
    *   get:
    *     summary: Get current month budget
    *     tags: [Budgets]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.get("/current", budgetController.getCurrentBudget);
+  router.get("/current", authenticateToken, budgetController.getCurrentBudget);
 
   /**
    * @swagger
@@ -64,8 +77,14 @@ export default function createBudgetRoutes(budgetController: BudgetController) {
    *   get:
    *     summary: Get all budget alerts
    *     tags: [Budgets]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.get("/alerts/all", budgetController.getBudgetAlerts);
+  router.get(
+    "/alerts/all",
+    authenticateToken,
+    budgetController.getBudgetAlerts
+  );
 
   /**
    * @swagger
@@ -73,8 +92,14 @@ export default function createBudgetRoutes(budgetController: BudgetController) {
    *   put:
    *     summary: Mark alert as read
    *     tags: [Budgets]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.put("/alerts/:id/read", budgetController.markAlertAsRead);
+  router.put(
+    "/alerts/:id/read",
+    authenticateToken,
+    budgetController.markAlertAsRead
+  );
 
   /**
    * @swagger
@@ -82,8 +107,14 @@ export default function createBudgetRoutes(budgetController: BudgetController) {
    *   get:
    *     summary: Get budget summary
    *     tags: [Budgets]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.get("/summary/all", budgetController.getBudgetSummary);
+  router.get(
+    "/summary/all",
+    authenticateToken,
+    budgetController.getBudgetSummary
+  );
 
   /**
    * @swagger
@@ -91,8 +122,14 @@ export default function createBudgetRoutes(budgetController: BudgetController) {
    *   put:
    *     summary: Recalculate budget spending
    *     tags: [Budgets]
+   *     security:
+   *       - bearerAuth: []
    */
-  router.put("/:id/recalc", budgetController.recalculateBudgetSpending);
+  router.put(
+    "/:id/recalc",
+    authenticateToken,
+    budgetController.recalculateBudgetSpending
+  );
 
   return router;
 }

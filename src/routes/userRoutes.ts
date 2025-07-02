@@ -1,5 +1,6 @@
 import { Router } from "express";
 import UsersController from "../controllers/UsersController";
+import { authenticateToken } from "../middlewares/auth";
 
 export default function createUserRoutes(userController: UsersController) {
   const router = Router();
@@ -410,6 +411,75 @@ export default function createUserRoutes(userController: UsersController) {
    *                 - status
    */
   router.post("/login", userController.loginUser);
+
+  /**
+   * @openapi
+   * /api/v1/users/me:
+   *   get:
+   *     summary: Get current user profile
+   *     description: Returns the current authenticated user's profile
+   *     tags:
+   *       - Users
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: Current user profile
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   description: Indicates if the request was successful
+   *                 data:
+   *                   type: object
+   *                   properties:
+   *                     id:
+   *                       type: string
+   *                       description: User ID
+   *                     email:
+   *                       type: string
+   *                       format: email
+   *                       description: User email address
+   *                     name:
+   *                       type: string
+   *                       description: User's full name
+   *                     bankAccounts:
+   *                       type: array
+   *                       items:
+   *                         type: object
+   *                         properties:
+   *                           id:
+   *                             type: string
+   *                           accountNumber:
+   *                             type: string
+   *                           bankName:
+   *                             type: string
+   *                           balance:
+   *                             type: number
+   *               required:
+   *                 - success
+   *                 - data
+   *       401:
+   *         description: Unauthorized
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *                   description: Error message
+   *                 status:
+   *                   type: number
+   *                   description: HTTP status code
+   *               required:
+   *                 - message
+   *                 - status
+   */
+  router.get("/me", authenticateToken, userController.getCurrentUser);
 
   return router;
 }
