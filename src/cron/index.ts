@@ -11,7 +11,7 @@ class CronJobs {
 
   constructor() {
     this.expenseService = new ExpenseService(prisma);
-    this.aiService = new AiService(prisma);
+    this.aiService = new AiService();
     this.budgetService = new BudgetService(prisma);
   }
 

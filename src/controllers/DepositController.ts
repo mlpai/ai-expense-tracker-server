@@ -17,7 +17,7 @@ export default class DepositController {
 
   getDepositsByUserId = async (req: Request, res: Response) => {
     try {
-      const { userId } = req.query;
+      const userId = req.user?.id || (req.query.userId as string);
       // Parse optional 'include' param as array
       let include: string[] | undefined = undefined;
       if (typeof req.query.include === "string") {
@@ -30,6 +30,7 @@ export default class DepositController {
       const filters: any = { ...req.query };
       if (filters.startDate) filters.startDate = new Date(filters.startDate);
       if (filters.endDate) filters.endDate = new Date(filters.endDate);
+
       const deposits = await this.depositService.getDepositsByUserId(
         userId as string,
         filters,

@@ -32,6 +32,12 @@ function createApp() {
     express.static(path.join(__dirname, "../public/uploads"))
   );
 
+  // Serve static files (for generated PDF reports)
+  app.use(
+    "/reports",
+    express.static(path.join(__dirname, "../public/reports"))
+  );
+
   // health check
   app.get("/health", (req, res) => {
     // retrun a healthy response with info about server

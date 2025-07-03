@@ -1,6 +1,6 @@
 import axios from "axios";
-import { Decimal } from "@prisma/client/runtime/library";
-import { PrismaClient } from "../../generated/prisma";
+import { prisma } from "../utils/prisma";
+import { PdfService, MonthlyReportData } from "./PdfService";
 
 export interface SpendingAnalysis {
   totalExpense: number;
@@ -23,7 +23,11 @@ const GEMINI_API_KEY = process.env.OPENAI_API_KEY;
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 export class AiService {
-  constructor(private readonly prisma: PrismaClient) {}
+  private pdfService: PdfService;
+
+  constructor() {
+    this.pdfService = new PdfService();
+  }
 
   private async callGemini(prompt: string, temperature = 0.3) {
     const body = {
@@ -42,35 +46,15 @@ export class AiService {
     return candidates[0].content.parts[0].text;
   }
 
-  async generateMonthlyReport(userId: string, month: number, year: number) {
+  async generateMonthlyReport(
+    userId: string,
+    month: number,
+    year: number,
+    generatePdf: boolean = true
+  ) {
     try {
-      const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 0);
-
-      // Get expenses for the month
-      const expenses = await this.prisma.expense.findMany({
-        where: {
-          userId,
-          date: { gte: startDate, lte: endDate },
-        },
-        include: {
-          category: true,
-        },
-      });
-
-      // Get deposits for the month
-      const deposits = await this.prisma.deposit.findMany({
-        where: {
-          userId,
-          date: { gte: startDate, lte: endDate },
-        },
-        include: {
-          depositType: true,
-        },
-      });
-
-      // Get budget for the month
-      const budget = await this.prisma.budget.findFirst({
+      // Check if report already exists for this month/year
+      const existingReport = await prisma.monthlyReport.findFirst({
         where: {
           userId,
           month,
@@ -78,121 +62,269 @@ export class AiService {
         },
       });
 
-      // Calculate totals
-      const totalExpense = expenses.reduce(
-        (sum: number, expense: any) => sum + Number(expense.amount),
-        0
-      );
-      const totalIncome = deposits.reduce(
-        (sum: number, deposit: any) => sum + Number(deposit.amount),
-        0
-      );
-      const netSavings = totalIncome - totalExpense;
-
-      // Analyze spending by category
-      const categoryAnalysis = this.analyzeSpendingByCategory(expenses);
-      const spendingTrends = await this.getSpendingTrends(userId, year);
-      const unusualExpenses = this.findUnusualExpenses(expenses);
-
-      // Generate AI insights
-      const aiInsights = await this.generateAiInsights({
-        totalExpense,
-        totalIncome,
-        netSavings,
-        categoryAnalysis,
-        spendingTrends,
-        unusualExpenses,
-        budget,
-        month,
-        year,
-      });
-
-      // Determine budget status
-      let budgetStatus = "ON_TRACK";
-      if (budget) {
-        const spentPercentage =
-          (totalExpense / Number(budget.amountLimit)) * 100;
-        if (spentPercentage > 100) {
-          budgetStatus = "OVER_BUDGET";
-        } else if (spentPercentage < 80) {
-          budgetStatus = "UNDER_BUDGET";
-        }
-      }
-
-      // Create or update monthly report
-      const reportData = {
-        totalExpense,
-        totalIncome,
-        netSavings,
-        categoryAnalysis,
-        spendingTrends,
-        unusualExpenses,
-        budget: budget
-          ? {
-              limit: Number(budget.amountLimit),
-              spent: Number(budget.spentAmount),
-              percentage:
-                (Number(budget.spentAmount) / Number(budget.amountLimit)) * 100,
-            }
-          : null,
-      };
-
-      const existingReport = await this.prisma.monthlyReport.findFirst({
-        where: {
-          userId,
-          month,
-          year,
-        },
-      });
+      let reportData;
 
       if (existingReport) {
-        await this.prisma.monthlyReport.update({
+        // Update existing report with fresh data
+        reportData = await this.calculateMonthlyData(userId, month, year);
+
+        await prisma.monthlyReport.update({
           where: { id: existingReport.id },
           data: {
-            totalExpense: new Decimal(totalExpense),
-            totalIncome: new Decimal(totalIncome),
-            netSavings: new Decimal(netSavings),
-            budgetStatus,
-            reportData: reportData as any,
-            aiInsights: aiInsights as any,
+            totalExpense: reportData.totalExpense,
+            totalIncome: reportData.totalIncome,
+            netSavings: reportData.netSavings,
+            budgetStatus: reportData.budgetStatus,
+            reportData: {
+              categoryAnalysis: reportData.categoryAnalysis,
+              spendingTrends: reportData.spendingTrends,
+              unusualExpenses: reportData.unusualExpenses || [],
+              budget: reportData.budget,
+            },
+            aiInsights: reportData.aiInsights,
           },
         });
+
+        console.log(`Updated existing monthly report for ${month}/${year}`);
       } else {
-        await this.prisma.monthlyReport.create({
+        // Create new report
+        reportData = await this.calculateMonthlyData(userId, month, year);
+
+        await prisma.monthlyReport.create({
           data: {
             userId,
             month,
             year,
-            totalExpense: new Decimal(totalExpense),
-            totalIncome: new Decimal(totalIncome),
-            netSavings: new Decimal(netSavings),
-            budgetStatus,
-            reportData: reportData as any,
-            aiInsights: aiInsights as any,
+            totalExpense: reportData.totalExpense,
+            totalIncome: reportData.totalIncome,
+            netSavings: reportData.netSavings,
+            budgetStatus: reportData.budgetStatus,
+            reportData: {
+              categoryAnalysis: reportData.categoryAnalysis,
+              spendingTrends: reportData.spendingTrends,
+              unusualExpenses: reportData.unusualExpenses || [],
+              budget: reportData.budget,
+            },
+            aiInsights: reportData.aiInsights,
           },
         });
+
+        console.log(`Created new monthly report for ${month}/${year}`);
+      }
+
+      // Generate PDF if requested
+      let pdfUrl = null;
+      if (generatePdf) {
+        try {
+          // Get user details for PDF
+          const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { name: true, email: true },
+          });
+
+          const pdfData: MonthlyReportData = {
+            user: {
+              name: user?.name || "User",
+              email: user?.email || "",
+            },
+            reportPeriod: {
+              month: month.toString(),
+              year,
+            },
+            ...reportData,
+          };
+
+          pdfUrl = await this.pdfService.generateMonthlyReportPdf(pdfData);
+          console.log(`Generated PDF report: ${pdfUrl}`);
+        } catch (pdfError) {
+          console.warn(`Failed to generate PDF: ${pdfError}`);
+          // Continue without PDF if generation fails
+        }
       }
 
       return {
-        totalExpense,
-        totalIncome,
-        netSavings,
-        budgetStatus,
-        categoryAnalysis,
-        spendingTrends,
-        unusualExpenses,
-        aiInsights,
+        ...reportData,
+        pdfUrl,
+        isUpdated: !!existingReport,
+        message: existingReport
+          ? "Report updated with latest data"
+          : "New report generated",
       };
     } catch (error) {
       throw new Error(`Failed to generate monthly report: ${error}`);
     }
   }
 
+  private async calculateMonthlyData(
+    userId: string,
+    month: number,
+    year: number
+  ) {
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59);
+
+    // Get monthly expenses
+    const expenses = await prisma.expense.findMany({
+      where: {
+        userId,
+        date: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      include: {
+        category: true,
+      },
+    });
+
+    // Get monthly deposits (income)
+    const deposits = await prisma.deposit.findMany({
+      where: {
+        userId,
+        date: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+    });
+
+    // Get user's budget
+    const budget = await prisma.budget.findFirst({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+    });
+
+    // Calculate totals
+    const totalExpense = expenses.reduce(
+      (sum: number, expense: any) => sum + Number(expense.amount),
+      0
+    );
+    const totalIncome = deposits.reduce(
+      (sum: number, deposit: any) => sum + Number(deposit.amount),
+      0
+    );
+    const netSavings = totalIncome - totalExpense;
+
+    // Calculate budget status
+    let budgetStatus = "NO_BUDGET";
+    if (budget) {
+      const spentPercentage = (totalExpense / Number(budget.amountLimit)) * 100;
+      if (spentPercentage <= 80) {
+        budgetStatus = "UNDER_BUDGET";
+      } else if (spentPercentage <= 100) {
+        budgetStatus = "ON_TRACK";
+      } else {
+        budgetStatus = "OVER_BUDGET";
+      }
+    }
+
+    // Category analysis
+    const categoryMap = new Map();
+    expenses.forEach((expense: any) => {
+      const categoryName = expense.category?.name || "Uncategorized";
+      const amount = Number(expense.amount);
+      categoryMap.set(
+        categoryName,
+        (categoryMap.get(categoryName) || 0) + amount
+      );
+    });
+
+    const categoryAnalysis = Array.from(categoryMap.entries()).map(
+      ([name, amount]) => ({
+        name,
+        amount,
+        percentage:
+          totalExpense > 0 ? Math.round((amount / totalExpense) * 100) : 0,
+      })
+    );
+
+    // Get year-to-date spending trends
+    const spendingTrends = await this.getYearSpendingTrends(userId, year);
+
+    // Generate AI insights
+    const monthlyData = {
+      totalExpense,
+      totalIncome,
+      netSavings,
+      budgetStatus,
+      categoryAnalysis,
+      spendingTrends,
+      budget: budget
+        ? {
+            limit: Number(budget.amountLimit),
+            spent: totalExpense,
+            percentage: Math.round(
+              (totalExpense / Number(budget.amountLimit)) * 100
+            ),
+          }
+        : undefined,
+    };
+
+    const aiInsights = await this.generateAiInsights(monthlyData);
+
+    return {
+      totalExpense,
+      totalIncome,
+      netSavings,
+      budgetStatus,
+      categoryAnalysis,
+      spendingTrends,
+      unusualExpenses: [], // Could be enhanced to detect unusual expenses
+      aiInsights,
+      budget: monthlyData.budget,
+    };
+  }
+
+  private async getYearSpendingTrends(userId: string, year: number) {
+    const trends = [];
+    const months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+
+    for (let month = 1; month <= 12; month++) {
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0, 23, 59, 59);
+
+      const expenses = await prisma.expense.findMany({
+        where: {
+          userId,
+          date: {
+            gte: startDate,
+            lte: endDate,
+          },
+        },
+      });
+
+      const totalAmount = expenses.reduce(
+        (sum: number, expense: any) => sum + Number(expense.amount),
+        0
+      );
+
+      trends.push({
+        month: months[month - 1],
+        amount: totalAmount,
+      });
+    }
+
+    return trends;
+  }
+
   async generateAiSuggestions(userId: string) {
     try {
       // Get recent financial data
       const last3Months = await this.getLast3MonthsData(userId);
-      const currentBudget = await this.prisma.budget.findFirst({
+      const currentBudget = await prisma.budget.findFirst({
         where: {
           userId,
           month: new Date().getMonth() + 1,
@@ -208,7 +340,7 @@ export class AiService {
       // Save suggestions to database
       const savedSuggestions = [];
       for (const suggestion of suggestions) {
-        const savedSuggestion = await this.prisma.aiSuggestion.create({
+        const savedSuggestion = await prisma.aiSuggestion.create({
           data: {
             userId,
             title: suggestion.title,
@@ -232,7 +364,7 @@ export class AiService {
       if (category) where.category = category;
       if (isRead !== undefined) where.isRead = isRead;
 
-      const suggestions = await this.prisma.aiSuggestion.findMany({
+      const suggestions = await prisma.aiSuggestion.findMany({
         where,
         orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
       });
@@ -245,7 +377,7 @@ export class AiService {
 
   async markSuggestionAsRead(suggestionId: string) {
     try {
-      const suggestion = await this.prisma.aiSuggestion.update({
+      const suggestion = await prisma.aiSuggestion.update({
         where: { id: suggestionId },
         data: { isRead: true },
       });
@@ -292,7 +424,7 @@ export class AiService {
       const startDate = new Date(year, month - 1, 1);
       const endDate = new Date(year, month, 0);
 
-      const expenses = await this.prisma.expense.findMany({
+      const expenses = await prisma.expense.findMany({
         where: {
           userId,
           date: { gte: startDate, lte: endDate },
@@ -392,14 +524,14 @@ export class AiService {
       const startDate = new Date(year, adjustedMonth - 1, 1);
       const endDate = new Date(year, adjustedMonth, 0);
 
-      const expenses = await this.prisma.expense.findMany({
+      const expenses = await prisma.expense.findMany({
         where: {
           userId,
           date: { gte: startDate, lte: endDate },
         },
       });
 
-      const deposits = await this.prisma.deposit.findMany({
+      const deposits = await prisma.deposit.findMany({
         where: {
           userId,
           date: { gte: startDate, lte: endDate },

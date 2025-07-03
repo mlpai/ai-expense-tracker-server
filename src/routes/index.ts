@@ -35,7 +35,7 @@ const depositService = new DepositService(prisma);
 const expenseService = new ExpenseService(prisma);
 const receiptService = new ReceiptService(prisma);
 const budgetService = new BudgetService(prisma);
-const aiService = new AiService(prisma);
+const aiService = new AiService();
 const expenseCategoryService = new ExpenseCategoryService(prisma);
 
 // inject services into controllers
