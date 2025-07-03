@@ -6,7 +6,14 @@ export default class AiController {
 
   generateMonthlyReport = async (req: Request, res: Response) => {
     try {
-      const { userId, month, year } = req.body;
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(400).json({
+          success: false,
+          message: "User ID is required",
+        });
+      }
+      const { month, year } = req.body;
       const report = await this.aiService.generateMonthlyReport(
         userId,
         Number(month),
@@ -22,7 +29,13 @@ export default class AiController {
 
   generateAiSuggestions = async (req: Request, res: Response) => {
     try {
-      const { userId } = req.body;
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(400).json({
+          success: false,
+          message: "User ID is required",
+        });
+      }
       const suggestions = await this.aiService.generateAiSuggestions(userId);
       res.status(200).json({ success: true, data: suggestions });
     } catch (error) {
@@ -34,9 +47,16 @@ export default class AiController {
 
   getAiSuggestions = async (req: Request, res: Response) => {
     try {
-      const { userId, category, isRead } = req.query;
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(400).json({
+          success: false,
+          message: "User ID is required",
+        });
+      }
+      const { category, isRead } = req.query;
       const suggestions = await this.aiService.getAiSuggestions(
-        userId as string,
+        userId,
         category as string,
         isRead ? isRead === "true" : undefined
       );

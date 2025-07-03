@@ -25,7 +25,7 @@ export interface CreateReceiptData {
 }
 
 const GEMINI_API_KEY = process.env.OPENAI_API_KEY;
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
+const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 export class ReceiptService {
   constructor(private readonly prisma: PrismaClient) {}

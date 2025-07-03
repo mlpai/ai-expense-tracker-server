@@ -20,7 +20,7 @@ export interface AiSuggestionData {
 }
 
 const GEMINI_API_KEY = process.env.OPENAI_API_KEY;
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
+const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 export class AiService {
   constructor(private readonly prisma: PrismaClient) {}
@@ -340,6 +340,16 @@ export class AiService {
     return unusualExpenses;
   }
 
+  private extractJsonFromMarkdown(text: string): string {
+    // Remove markdown code blocks if present
+    const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (jsonMatch) {
+      return jsonMatch[1].trim();
+    }
+    // If no markdown blocks, return the text as is
+    return text.trim();
+  }
+
   private async generateAiInsights(data: any) {
     try {
       const prompt = `\n        Analyze this financial data and provide insights in JSON format:\n        Monthly Summary:\n        - Total Expense: $${
@@ -356,7 +366,8 @@ export class AiService {
         data.unusualExpenses
       )}\n        Provide insights in this JSON format:\n        {\n          \"summary\": \"Brief summary of financial health\",\n          \"keyInsights\": [\"insight1\", \"insight2\", \"insight3\"],\n          \"recommendations\": [\"recommendation1\", \"recommendation2\", \"recommendation3\"],\n          \"riskFactors\": [\"risk1\", \"risk2\"],\n          \"opportunities\": [\"opportunity1\", \"opportunity2\"]\n        }\n      `;
       const responseText = await this.callGemini(prompt, 0.3);
-      return JSON.parse(responseText);
+      const cleanJson = this.extractJsonFromMarkdown(responseText);
+      return JSON.parse(cleanJson);
     } catch (error) {
       console.error("AI insights generation failed:", error);
       return {
@@ -436,7 +447,8 @@ export class AiService {
           : "No budget set"
       }\n        Generate 3-5 suggestions in this JSON format:\n        [\n          {\n            \"title\": \"Suggestion title\",\n            \"suggestion\": \"Detailed suggestion with actionable steps\",\n            \"category\": \"BUDGET|SAVINGS|SPENDING_PATTERN|INVESTMENT\",\n            \"priority\": \"LOW|MEDIUM|HIGH\"\n          }\n        ]\n      `;
       const responseText = await this.callGemini(prompt, 0.4);
-      return JSON.parse(responseText);
+      const cleanJson = this.extractJsonFromMarkdown(responseText);
+      return JSON.parse(cleanJson);
     } catch (error) {
       console.error("AI suggestions generation failed:", error);
       return [
