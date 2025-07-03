@@ -136,7 +136,6 @@ export default class AiController {
             `-${report.year}-${String(report.month).padStart(2, "0")}-`
           )
         );
-
         return {
           ...report,
           pdfUrl: matchingPdf || null,

@@ -176,79 +176,96 @@ export class PdfServiceNew {
     this.addFooter(doc, currentDate);
   }
 
+  private addHeader(doc: jsPDF, data: MonthlyReportData): void {
+    // Header background
+    doc.setFillColor(37, 99, 235);
+    doc.rect(0, 0, 210, 40, "F");
+
+    // Title
+    doc.setFontSize(24);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(255, 255, 255);
+    doc.text("Monthly Financial Report", 20, 20);
+
+    // Subtitle
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "normal");
+    doc.text(
+      `${data.reportPeriod.month}/${data.reportPeriod.year} - ${this.cleanText(
+        data.user.name
+      )}`,
+      20,
+      30
+    );
+
+    // Reset colors
+    doc.setTextColor(0, 0, 0);
+  }
+
   private addSummaryCards(
     doc: jsPDF,
     data: MonthlyReportData,
     yPosition: number
-  ): void {
-    const cardWidth = 40;
-    const cardHeight = 35;
-    const cardSpacing = 8;
-    const startX = 20;
+  ): number {
+    const cardWidth = 50;
+    const cardHeight = 25;
+    const cardSpacing = 5;
 
     const cards = [
       {
         title: "Total Income",
         value: `$${data.totalIncome.toLocaleString()}`,
-        isPositive: true,
+        color: [34, 197, 94], // green
+        bgColor: [240, 253, 244],
       },
       {
         title: "Total Expenses",
         value: `$${data.totalExpense.toLocaleString()}`,
-        isPositive: false,
+        color: [239, 68, 68], // red
+        bgColor: [254, 242, 242],
       },
       {
         title: "Net Savings",
         value: `$${data.netSavings.toLocaleString()}`,
-        isPositive: data.netSavings >= 0,
-      },
-      {
-        title: "Budget Status",
-        value: this.getBudgetStatusText(data.budgetStatus),
-        isPositive: data.budgetStatus === "UNDER_BUDGET",
+        color: data.netSavings >= 0 ? [34, 197, 94] : [239, 68, 68],
+        bgColor: data.netSavings >= 0 ? [240, 253, 244] : [254, 242, 242],
       },
     ];
 
     cards.forEach((card, index) => {
-      const x = startX + index * (cardWidth + cardSpacing);
+      const xPos = 20 + (cardWidth + cardSpacing) * index;
 
       // Card background
-      doc.setFillColor(248, 250, 252);
-      doc.rect(x, yPosition, cardWidth, cardHeight, "F");
-      doc.setDrawColor(226, 232, 240);
-      doc.rect(x, yPosition, cardWidth, cardHeight);
+      doc.setFillColor(card.bgColor[0], card.bgColor[1], card.bgColor[2]);
+      doc.rect(xPos, yPosition, cardWidth, cardHeight, "F");
+
+      // Card border
+      doc.setDrawColor(card.color[0], card.color[1], card.color[2]);
+      doc.rect(xPos, yPosition, cardWidth, cardHeight);
 
       // Title
-      doc.setFontSize(9);
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
       doc.setTextColor(100, 100, 100);
-      doc.text(card.title, x + cardWidth / 2, yPosition + 8, {
-        align: "center",
-      });
+      doc.text(this.cleanText(card.title), xPos + 2, yPosition + 6);
 
       // Value
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
-      doc.setTextColor(
-        card.isPositive ? 34 : 239,
-        card.isPositive ? 197 : 68,
-        card.isPositive ? 94 : 68
-      );
-      doc.text(card.value, x + cardWidth / 2, yPosition + 20, {
-        align: "center",
-      });
+      doc.setTextColor(card.color[0], card.color[1], card.color[2]);
+      doc.text(this.cleanText(card.value), xPos + 2, yPosition + 15);
 
-      // Budget details
-      if (index === 3 && data.budget) {
+      // Status indicator
+      if (index === 2) {
+        // Net Savings card
+        const status = data.netSavings >= 0 ? "Positive" : "Negative";
         doc.setFontSize(7);
-        doc.setTextColor(100, 100, 100);
-        doc.text(
-          `$${data.budget.spent}/$${data.budget.limit}`,
-          x + cardWidth / 2,
-          yPosition + 28,
-          { align: "center" }
-        );
+        doc.setFont("helvetica", "normal");
+        doc.text(status, xPos + 2, yPosition + 22);
       }
     });
+
+    return yPosition + cardHeight + 10;
   }
 
   private addCategoryAnalysis(
@@ -258,44 +275,81 @@ export class PdfServiceNew {
   ): number {
     doc.setFontSize(16);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(0, 0, 0);
     doc.text("Spending by Category", 20, yPosition);
     yPosition += 15;
 
-    if (data.categoryAnalysis && data.categoryAnalysis.length > 0) {
-      const tableData = data.categoryAnalysis.map((category) => [
-        category.name,
-        `$${category.amount.toLocaleString()}`,
-        `${category.percentage}%`,
-      ]);
-
-      autoTable(doc, {
-        startY: yPosition,
-        head: [["Category", "Amount", "Percentage"]],
-        body: tableData,
-        theme: "striped",
-        headStyles: {
-          fillColor: [66, 153, 225],
-          textColor: [255, 255, 255],
-          fontSize: 10,
-        },
-        bodyStyles: {
-          fontSize: 9,
-        },
-        margin: { left: 20 },
-        columnStyles: {
-          1: { halign: "right" },
-          2: { halign: "center" },
-        },
-      });
-
-      return (doc as any).lastAutoTable.finalY + 10;
-    } else {
+    if (!data.categoryAnalysis || data.categoryAnalysis.length === 0) {
       doc.setFontSize(10);
-      doc.setTextColor(150, 150, 150);
-      doc.text("No expenses recorded for this month.", 20, yPosition);
+      doc.setTextColor(128, 128, 128);
+      doc.text("No expenses recorded for this month", 20, yPosition);
       return yPosition + 15;
     }
+
+    // Table headers
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(0, 0, 0);
+
+    const tableStartY = yPosition;
+    const rowHeight = 8;
+
+    // Header background
+    doc.setFillColor(240, 240, 240);
+    doc.rect(20, tableStartY, 170, rowHeight, "F");
+
+    doc.text("Category", 25, tableStartY + 5);
+    doc.text("Amount", 90, tableStartY + 5);
+    doc.text("Percentage", 140, tableStartY + 5);
+
+    yPosition += rowHeight;
+
+    // Table rows
+    data.categoryAnalysis.forEach((category: any, index: number) => {
+      if (yPosition > 250) {
+        doc.addPage();
+        yPosition = 20;
+      }
+
+      // Alternating row colors
+      if (index % 2 === 0) {
+        doc.setFillColor(248, 248, 248);
+        doc.rect(20, yPosition, 170, rowHeight, "F");
+      }
+
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(0, 0, 0);
+
+      const cleanCategoryName = this.cleanText(
+        category.name || "Uncategorized"
+      );
+      doc.text(cleanCategoryName, 25, yPosition + 5);
+      doc.text(
+        `$${Number(category.amount).toLocaleString()}`,
+        90,
+        yPosition + 5
+      );
+      doc.text(`${category.percentage}%`, 140, yPosition + 5);
+
+      // Progress bar
+      const barWidth = 30;
+      const barHeight = 3;
+      const barX = 155;
+      const barY = yPosition + 3;
+
+      // Background bar
+      doc.setFillColor(230, 230, 230);
+      doc.rect(barX, barY, barWidth, barHeight, "F");
+
+      // Progress bar
+      const progressWidth = (category.percentage / 100) * barWidth;
+      doc.setFillColor(59, 130, 246);
+      doc.rect(barX, barY, progressWidth, barHeight, "F");
+
+      yPosition += rowHeight;
+    });
+
+    return yPosition + 10;
   }
 
   private addSpendingTrends(
@@ -305,44 +359,73 @@ export class PdfServiceNew {
   ): number {
     doc.setFontSize(16);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(0, 0, 0);
     doc.text("Year-to-Date Spending Trends", 20, yPosition);
     yPosition += 15;
 
-    // Simple bar chart
+    if (!data.spendingTrends || data.spendingTrends.length === 0) {
+      doc.setFontSize(10);
+      doc.setTextColor(128, 128, 128);
+      doc.text("No spending trend data available", 20, yPosition);
+      return yPosition + 15;
+    }
+
+    // Simple bar chart representation
     const chartWidth = 150;
     const chartHeight = 40;
-    const barWidth = chartWidth / 12;
+    const chartX = 20;
+    const chartY = yPosition;
+
+    // Find max amount for scaling
     const maxAmount = Math.max(
-      ...data.spendingTrends.map((trend) => trend.amount),
-      1
+      ...data.spendingTrends.map((trend: any) => Number(trend.amount))
     );
 
-    data.spendingTrends.forEach((trend, index) => {
-      const barHeight = (trend.amount / maxAmount) * chartHeight;
-      const x = 20 + index * barWidth;
-      const y = yPosition + chartHeight - barHeight;
+    if (maxAmount === 0) {
+      doc.setFontSize(10);
+      doc.setTextColor(128, 128, 128);
+      doc.text("No spending data to display", 20, yPosition);
+      return yPosition + 15;
+    }
 
-      if (trend.amount > 0) {
-        doc.setFillColor(66, 153, 225);
-        doc.rect(x + 1, y, barWidth - 2, barHeight, "F");
-      }
+    // Draw chart background
+    doc.setFillColor(248, 248, 248);
+    doc.rect(chartX, chartY, chartWidth, chartHeight, "F");
+    doc.setDrawColor(200, 200, 200);
+    doc.rect(chartX, chartY, chartWidth, chartHeight);
+
+    // Draw bars
+    const barWidth = chartWidth / data.spendingTrends.length;
+
+    data.spendingTrends.forEach((trend: any, index: number) => {
+      const amount = Number(trend.amount);
+      const barHeight = (amount / maxAmount) * (chartHeight - 5);
+      const barX = chartX + index * barWidth + 2;
+      const barY = chartY + chartHeight - barHeight - 2;
+
+      // Draw bar
+      doc.setFillColor(59, 130, 246);
+      doc.rect(barX, barY, barWidth - 4, barHeight, "F");
 
       // Month label
       doc.setFontSize(7);
       doc.setTextColor(0, 0, 0);
-      doc.text(trend.month, x + barWidth / 2, yPosition + chartHeight + 8, {
-        align: "center",
-      });
-
-      // Amount label if significant
-      if (trend.amount > 0) {
-        doc.setFontSize(6);
-        doc.text(`$${trend.amount}`, x + barWidth / 2, y - 2, {
-          align: "center",
-        });
-      }
+      const cleanMonth = this.cleanText(trend.month || "");
+      doc.text(
+        cleanMonth,
+        barX + (barWidth - 4) / 2,
+        chartY + chartHeight + 8,
+        { align: "center" }
+      );
     });
+
+    // Chart title
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.text(
+      `Max: $${maxAmount.toLocaleString()}`,
+      chartX + chartWidth - 30,
+      chartY - 2
+    );
 
     return yPosition + chartHeight + 20;
   }
@@ -356,11 +439,7 @@ export class PdfServiceNew {
 
     doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
-    doc.text(
-      "🤖 AI-Powered Financial Analysis & Recommendations",
-      20,
-      yPosition
-    );
+    doc.text("AI-Powered Financial Analysis & Recommendations", 20, yPosition);
     yPosition += 20;
 
     // Executive Summary with enhanced styling
@@ -371,7 +450,7 @@ export class PdfServiceNew {
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(30, 64, 175);
-    doc.text("📊 Executive Summary", 25, yPosition + 8);
+    doc.text("Executive Summary", 25, yPosition + 8);
 
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
@@ -381,28 +460,28 @@ export class PdfServiceNew {
 
     yPosition += Math.max(30, summaryLines.length * 3 + 15);
 
-    // Enhanced insights sections with icons and better formatting
+    // Enhanced insights sections with better formatting
     const sections = [
       {
-        title: "💡 Key Financial Insights",
+        title: "Key Financial Insights",
         items: data.aiInsights.keyInsights,
         color: [59, 130, 246],
         bgColor: [239, 246, 255],
       },
       {
-        title: "🎯 Smart Recommendations",
+        title: "Smart Recommendations",
         items: data.aiInsights.recommendations,
         color: [245, 101, 101],
         bgColor: [254, 242, 242],
       },
       {
-        title: "📈 Investment & Growth Opportunities",
+        title: "Investment & Growth Opportunities",
         items: data.aiInsights.opportunities,
         color: [16, 185, 129],
         bgColor: [236, 253, 245],
       },
       {
-        title: "⚠️ Risk Factors & Mitigation",
+        title: "Risk Factors & Mitigation",
         items: data.aiInsights.riskFactors,
         color: [245, 101, 101],
         bgColor: [254, 242, 242],
@@ -445,13 +524,16 @@ export class PdfServiceNew {
         doc.setFont("helvetica", "normal");
         doc.setTextColor(45, 55, 72);
 
+        // Clean text to remove any special characters
+        const cleanItem = this.cleanText(item);
+
         // Numbered bullets for better readability
         const bulletNumber = `${index + 1}.`;
         doc.setFont("helvetica", "bold");
         doc.text(bulletNumber, 25, yPosition);
 
         doc.setFont("helvetica", "normal");
-        const itemLines = doc.splitTextToSize(item, 155);
+        const itemLines = doc.splitTextToSize(cleanItem, 155);
         doc.text(itemLines, 32, yPosition);
         yPosition += itemLines.length * 3.5 + 3;
       });
@@ -484,7 +566,7 @@ export class PdfServiceNew {
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(180, 83, 9);
-    doc.text("💰 Financial Health Assessment", 25, yPosition + 8);
+    doc.text("Financial Health Assessment", 25, yPosition + 8);
 
     // Calculate financial health score
     const savingsRate =
@@ -509,17 +591,34 @@ export class PdfServiceNew {
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(16, 185, 129);
-      doc.text("🚀 Quick Action Items for Next Month", 20, yPosition);
+      doc.text("Quick Action Items for Next Month", 20, yPosition);
       yPosition += 12;
 
       actionItems.forEach((action, index) => {
         doc.setFontSize(8);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(45, 55, 72);
-        doc.text(`${index + 1}. ${action}`, 25, yPosition);
+        const cleanAction = this.cleanText(action);
+        doc.text(`${index + 1}. ${cleanAction}`, 25, yPosition);
         yPosition += 5;
       });
     }
+  }
+
+  private cleanText(text: string): string {
+    if (!text) return "";
+
+    // Remove emoji and special characters that cause encoding issues
+    return text
+      .replace(/[\u{1F600}-\u{1F64F}]/gu, "") // emoticons
+      .replace(/[\u{1F300}-\u{1F5FF}]/gu, "") // misc symbols
+      .replace(/[\u{1F680}-\u{1F6FF}]/gu, "") // transport
+      .replace(/[\u{2600}-\u{26FF}]/gu, "") // misc symbols
+      .replace(/[\u{2700}-\u{27BF}]/gu, "") // dingbats
+      .replace(/[\u{1F900}-\u{1F9FF}]/gu, "") // supplemental symbols
+      .replace(/[\u{1F1E0}-\u{1F1FF}]/gu, "") // flags
+      .replace(/[^\x00-\x7F]/g, "") // remove non-ASCII characters
+      .trim();
   }
 
   private calculateFinancialHealthScore(
