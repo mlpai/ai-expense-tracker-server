@@ -58,13 +58,12 @@ export default class ReceiptController {
 
   createExpenseFromReceipt = async (req: Request, res: Response) => {
     try {
-      const { receiptId, userId, bankAccountId, expenseTypeId, amount } =
-        req.body;
+      const { receiptId, userId, bankAccountId, categoryId, amount } = req.body;
       const expense = await this.receiptService.createExpenseFromReceipt(
         receiptId,
         userId,
         bankAccountId,
-        expenseTypeId,
+        categoryId,
         amount
       );
       res.status(201).json({ success: true, data: expense });

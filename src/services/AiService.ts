@@ -40,11 +40,7 @@ export class AiService {
           date: { gte: startDate, lte: endDate },
         },
         include: {
-          expenseType: {
-            include: {
-              category: true,
-            },
-          },
+          category: true,
         },
       });
 
@@ -250,7 +246,7 @@ export class AiService {
     const categoryMap = new Map<string, number>();
 
     expenses.forEach((expense: any) => {
-      const categoryName = expense.expenseType.category.name;
+      const categoryName = expense.category.name;
       const amount = Number(expense.amount);
       categoryMap.set(
         categoryName,
@@ -321,7 +317,7 @@ export class AiService {
         return amount > mean + 2 * standardDeviation; // More than 2 standard deviations above mean
       })
       .map((expense: any) => ({
-        description: expense.note || expense.expenseType.name,
+        description: expense.note || expense.category.name,
         amount: Number(expense.amount),
         date: expense.date.toISOString().split("T")[0],
       }))

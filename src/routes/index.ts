@@ -21,6 +21,9 @@ import createBudgetRoutes from "./budgetRoutes";
 import { AiService } from "../services/AiService";
 import AiController from "../controllers/AiController";
 import createAiRoutes from "./aiRoutes";
+import { ExpenseCategoryService } from "../services/ExpenseCategoryService";
+import ExpenseCategoryController from "../controllers/ExpenseCategoryController";
+import createExpenseCategoryRoutes from "./expenseCategoryRoutes";
 
 const router = Router();
 
@@ -32,6 +35,7 @@ const expenseService = new ExpenseService(prisma);
 const receiptService = new ReceiptService(prisma);
 const budgetService = new BudgetService(prisma);
 const aiService = new AiService(prisma);
+const expenseCategoryService = new ExpenseCategoryService(prisma);
 
 // inject services into controllers
 const userController = new UsersController(userService);
@@ -41,6 +45,9 @@ const expenseController = new ExpenseController(expenseService);
 const receiptController = new ReceiptController(receiptService);
 const budgetController = new BudgetController(budgetService);
 const aiController = new AiController(aiService);
+const expenseCategoryController = new ExpenseCategoryController(
+  expenseCategoryService
+);
 
 // Register routes
 const userRoutes = createUserRoutes(userController);
@@ -50,6 +57,9 @@ const expenseRoutes = createExpenseRoutes(expenseController);
 const receiptRoutes = createReceiptRoutes(receiptController);
 const budgetRoutes = createBudgetRoutes(budgetController);
 const aiRoutes = createAiRoutes(aiController);
+const expenseCategoryRoutes = createExpenseCategoryRoutes(
+  expenseCategoryController
+);
 
 // Routes
 router.use("/users", userRoutes);
@@ -59,5 +69,6 @@ router.use("/expenses", expenseRoutes);
 router.use("/receipts", receiptRoutes);
 router.use("/budgets", budgetRoutes);
 router.use("/ai", aiRoutes);
+router.use("/expense-categories", expenseCategoryRoutes);
 
 export default router;

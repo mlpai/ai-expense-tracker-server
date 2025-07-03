@@ -43,7 +43,12 @@ export default class UsersController {
       const userData = req.body;
       userData.passwordHash = req.body.password;
       delete userData.password;
-      const result = await this.userService.createUser(userData as User);
+      const { passwordHash, email, name } = userData;
+      const result = await this.userService.createUser({
+        name,
+        email,
+        passwordHash,
+      } as User);
       res.status(201).json({
         success: true,
         data: result,

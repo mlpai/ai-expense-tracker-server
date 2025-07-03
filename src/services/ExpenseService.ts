@@ -2,12 +2,12 @@ import { Decimal } from "@prisma/client/runtime/library";
 import { PrismaClient } from "../../generated/prisma";
 
 export interface CreateExpenseData {
-  userId: string;
+  userId?: string;
   bankAccountId: string;
-  expenseTypeId: string;
+  categoryId: string;
   amount: number;
   note?: string;
-  date?: Date;
+  date?: Date | string;
   isRecurring?: boolean;
   recurringExpenseId?: string;
   receiptId?: string;
@@ -15,7 +15,7 @@ export interface CreateExpenseData {
 
 export interface CreateRecurringExpenseData {
   userId: string;
-  expenseTypeId: string;
+  categoryId: string;
   amount: number;
   note?: string;
   frequency: "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
@@ -24,7 +24,7 @@ export interface CreateRecurringExpenseData {
 }
 
 export interface UpdateExpenseData {
-  expenseTypeId?: string;
+  categoryId?: string;
   amount?: number;
   note?: string;
   date?: Date;
@@ -35,24 +35,32 @@ export class ExpenseService {
 
   async createExpense(data: CreateExpenseData) {
     try {
+      // Ensure userId is provided
+      if (!data.userId) {
+        throw new Error("User ID is required");
+      }
+
+      // Convert date string to Date object if provided
+      const expenseDate = data.date
+        ? typeof data.date === "string"
+          ? new Date(data.date)
+          : data.date
+        : new Date();
+
       const expense = await this.prisma.expense.create({
         data: {
           userId: data.userId,
           bankAccountId: data.bankAccountId,
-          expenseTypeId: data.expenseTypeId,
+          categoryId: data.categoryId,
           amount: new Decimal(data.amount),
           note: data.note,
-          date: data.date || new Date(),
+          date: expenseDate,
           isRecurring: data.isRecurring || false,
           recurringExpenseId: data.recurringExpenseId,
           receiptId: data.receiptId,
         },
         include: {
-          expenseType: {
-            include: {
-              category: true,
-            },
-          },
+          category: true,
           bankAccount: true,
           receipt: true,
         },
@@ -73,7 +81,6 @@ export class ExpenseService {
       startDate?: Date;
       endDate?: Date;
       bankAccountId?: string;
-      expenseTypeId?: string;
       categoryId?: string;
     }
   ) {
@@ -87,19 +94,12 @@ export class ExpenseService {
       }
 
       if (filters?.bankAccountId) where.bankAccountId = filters.bankAccountId;
-      if (filters?.expenseTypeId) where.expenseTypeId = filters.expenseTypeId;
-      if (filters?.categoryId) {
-        where.expenseType = { categoryId: filters.categoryId };
-      }
+      if (filters?.categoryId) where.categoryId = filters.categoryId;
 
       const expenses = await this.prisma.expense.findMany({
         where,
         include: {
-          expenseType: {
-            include: {
-              category: true,
-            },
-          },
+          category: true,
           bankAccount: true,
           receipt: true,
         },
@@ -117,11 +117,7 @@ export class ExpenseService {
       const expense = await this.prisma.expense.findUnique({
         where: { id },
         include: {
-          expenseType: {
-            include: {
-              category: true,
-            },
-          },
+          category: true,
           bankAccount: true,
           receipt: true,
         },
@@ -145,7 +141,7 @@ export class ExpenseService {
       }
 
       const updateData: any = {};
-      if (data.expenseTypeId) updateData.expenseTypeId = data.expenseTypeId;
+      if (data.categoryId) updateData.categoryId = data.categoryId;
       if (data.amount !== undefined)
         updateData.amount = new Decimal(data.amount);
       if (data.note !== undefined) updateData.note = data.note;
@@ -155,11 +151,7 @@ export class ExpenseService {
         where: { id },
         data: updateData,
         include: {
-          expenseType: {
-            include: {
-              category: true,
-            },
-          },
+          category: true,
           bankAccount: true,
           receipt: true,
         },
@@ -215,7 +207,7 @@ export class ExpenseService {
       const recurringExpense = await this.prisma.recurringExpense.create({
         data: {
           userId: data.userId,
-          expenseTypeId: data.expenseTypeId,
+          categoryId: data.categoryId,
           amount: new Decimal(data.amount),
           note: data.note,
           frequency: data.frequency,
@@ -224,11 +216,7 @@ export class ExpenseService {
           nextDueDate,
         },
         include: {
-          expenseType: {
-            include: {
-              category: true,
-            },
-          },
+          category: true,
         },
       });
 
@@ -243,11 +231,7 @@ export class ExpenseService {
       const recurringExpenses = await this.prisma.recurringExpense.findMany({
         where: { userId, isActive: true },
         include: {
-          expenseType: {
-            include: {
-              category: true,
-            },
-          },
+          category: true,
         },
         orderBy: { nextDueDate: "asc" },
       });
@@ -268,7 +252,7 @@ export class ExpenseService {
           OR: [{ endDate: null }, { endDate: { gte: today } }],
         },
         include: {
-          expenseType: true,
+          category: true,
         },
       });
 
@@ -294,7 +278,7 @@ export class ExpenseService {
         const expense = await this.createExpense({
           userId: recurringExpense.userId,
           bankAccountId: defaultAccount.id,
-          expenseTypeId: recurringExpense.expenseTypeId,
+          categoryId: recurringExpense.categoryId,
           amount: Number(recurringExpense.amount),
           note: recurringExpense.note ?? undefined,
           date: new Date(),
@@ -330,11 +314,7 @@ export class ExpenseService {
           date: { gte: startDate, lte: endDate },
         },
         include: {
-          expenseType: {
-            include: {
-              category: true,
-            },
-          },
+          category: true,
         },
       });
 
@@ -350,7 +330,7 @@ export class ExpenseService {
         summary.totalAmount += amount;
 
         // By category
-        const categoryName = expense.expenseType.category.name;
+        const categoryName = expense.category.name;
         if (!summary.byCategory[categoryName]) {
           summary.byCategory[categoryName] = { amount: 0, count: 0 };
         }
@@ -358,7 +338,7 @@ export class ExpenseService {
         summary.byCategory[categoryName].count += 1;
 
         // By type
-        const typeName = expense.expenseType.name;
+        const typeName = expense.category.name;
         if (!summary.byType[typeName]) {
           summary.byType[typeName] = { amount: 0, count: 0 };
         }

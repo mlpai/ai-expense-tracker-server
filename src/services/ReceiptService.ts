@@ -17,7 +17,6 @@ export interface ProcessedReceiptData {
   tax?: number;
   tip?: number;
   category?: string;
-  expenseType?: string;
 }
 
 export interface CreateReceiptData {
@@ -60,11 +59,7 @@ export class ReceiptService {
         include: {
           expenses: {
             include: {
-              expenseType: {
-                include: {
-                  category: true,
-                },
-              },
+              category: true,
               bankAccount: true,
             },
           },
@@ -85,11 +80,7 @@ export class ReceiptService {
         include: {
           expenses: {
             include: {
-              expenseType: {
-                include: {
-                  category: true,
-                },
-              },
+              category: true,
               bankAccount: true,
             },
           },
@@ -214,7 +205,6 @@ export class ReceiptService {
         - tax: Tax amount if present (number)
         - tip: Tip amount if present (number)
         - category: Suggested expense category (e.g., "Food & Dining", "Transportation", "Shopping", "Utilities", "Entertainment", "Healthcare", "Education", "Other")
-        - expenseType: Suggested expense type within the category
 
         Receipt text:
         ${ocrText}
@@ -257,7 +247,7 @@ export class ReceiptService {
     receiptId: string,
     userId: string,
     bankAccountId: string,
-    expenseTypeId: string,
+    categoryId: string,
     amount?: number
   ) {
     try {
@@ -277,18 +267,14 @@ export class ReceiptService {
         data: {
           userId,
           bankAccountId,
-          expenseTypeId,
+          categoryId,
           amount: new (require("@prisma/client").Decimal)(expenseAmount),
           note: `Receipt from ${processedData.merchant}`,
           date: processedData.date,
           receiptId,
         },
         include: {
-          expenseType: {
-            include: {
-              category: true,
-            },
-          },
+          category: true,
           bankAccount: true,
           receipt: true,
         },

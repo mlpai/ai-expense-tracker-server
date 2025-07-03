@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"
@@ -15,38 +9,36 @@ datasource db {
 }
 
 model User {
-  id             String    @id @default(uuid())
-  email          String    @unique
-  passwordHash   String
-  name           String
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-
-  bankAccounts   BankAccount[]
-  expenses       Expense[]
-  deposits       Deposit[]
+  id                String             @id @default(uuid())
+  name              String
+  email             String             @unique
+  createdAt         DateTime           @default(now())
+  passwordHash      String
+  updatedAt         DateTime           @updatedAt
+  aiSuggestions     AiSuggestion[]
+  bankAccounts      BankAccount[]
+  budgets           Budget[]
+  deposits          Deposit[]
+  expenses          Expense[]
+  monthlyReports    MonthlyReport[]
+  notifications     Notification[]
+  receipts          Receipt[]
   recurringExpenses RecurringExpense[]
-  receipts       Receipt[]
-  budgets        Budget[]
-  aiSuggestions  AiSuggestion[]
-  monthlyReports MonthlyReport[]
-  notifications  Notification[]
 }
 
 model BankAccount {
-  id             String   @id @default(uuid())
-  user           User     @relation(fields: [userId], references: [id])
-  userId         String
-  name           String
-  accountNumber  String   @unique
-  balance        Float    @default(0)
-  bankName       String
-  isDefault      Boolean  @default(false)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  expenses       Expense[]
-  deposits       Deposit[]
+  id            String    @id @default(uuid())
+  userId        String
+  name          String
+  accountNumber String    @unique
+  bankName      String
+  isDefault     Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  balance       Float     @default(0)
+  user          User      @relation(fields: [userId], references: [id])
+  deposits      Deposit[]
+  expenses      Expense[]
 }
 
 model ExpenseCategory {
@@ -58,17 +50,6 @@ model ExpenseCategory {
   isDefault      Boolean   @default(false)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
-
-  expenseTypes   ExpenseType[]
-}
-
-model ExpenseType {
-  id             String    @id @default(uuid())
-  name           String    @unique
-  description    String?
-  categoryId     String
-  category       ExpenseCategory @relation(fields: [categoryId], references: [id])
-  createdAt      DateTime  @default(now())
 
   expenses       Expense[]
   recurringExpenses RecurringExpense[]
@@ -91,8 +72,8 @@ model Expense {
   userId         String
   bankAccount    BankAccount   @relation(fields: [bankAccountId], references: [id])
   bankAccountId  String
-  expenseType    ExpenseType   @relation(fields: [expenseTypeId], references: [id])
-  expenseTypeId  String
+  category       ExpenseCategory @relation(fields: [categoryId], references: [id])
+  categoryId     String
   amount         Decimal       @db.Decimal(12, 2)
   note           String?
   date           DateTime      @default(now())
@@ -125,8 +106,8 @@ model RecurringExpense {
   id             String        @id @default(uuid())
   user           User          @relation(fields: [userId], references: [id])
   userId         String
-  expenseType    ExpenseType   @relation(fields: [expenseTypeId], references: [id])
-  expenseTypeId  String
+  category       ExpenseCategory @relation(fields: [categoryId], references: [id])
+  categoryId     String
   amount         Decimal       @db.Decimal(12, 2)
   note           String?
   frequency      String        // 'DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'
@@ -141,78 +122,76 @@ model RecurringExpense {
 }
 
 model Receipt {
-  id             String    @id @default(uuid())
-  user           User      @relation(fields: [userId], references: [id])
-  userId         String
-  imageUrl       String
-  originalText   String?   // Raw OCR text
-  processedData  Json?     // AI processed data
-  status         String    @default("PENDING") // 'PENDING', 'PROCESSED', 'FAILED'
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @default(now())
-
-  expenses       Expense[]
+  id            String    @id @default(uuid())
+  userId        String
+  imageUrl      String
+  originalText  String?
+  processedData Json?
+  status        String    @default("PENDING")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @default(now())
+  expenses      Expense[]
+  user          User      @relation(fields: [userId], references: [id])
 }
 
 model Budget {
-  id             String        @id @default(uuid())
-  user           User          @relation(fields: [userId], references: [id])
-  userId         String
-  month          Int
-  year           Int
-  amountLimit    Decimal       @db.Decimal(12, 2)
-  spentAmount    Decimal       @db.Decimal(12, 2) @default(0)
-  thresholdPercentage Int      @default(80) // Alert when 80% of budget is spent
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-
-  alerts         BudgetAlert[]
+  id                  String        @id @default(uuid())
+  userId              String
+  month               Int
+  year                Int
+  amountLimit         Decimal       @db.Decimal(12, 2)
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  spentAmount         Decimal       @default(0) @db.Decimal(12, 2)
+  thresholdPercentage Int           @default(80)
+  user                User          @relation(fields: [userId], references: [id])
+  alerts              BudgetAlert[]
 }
 
 model BudgetAlert {
-  id             String     @id @default(uuid())
-  budget         Budget     @relation(fields: [budgetId], references: [id])
-  budgetId       String
-  alertType      String     // 'THRESHOLD_REACHED' | 'EXCEEDED'
-  message        String
-  isRead         Boolean    @default(false)
-  createdAt      DateTime   @default(now())
+  id        String   @id @default(uuid())
+  budgetId  String
+  alertType String
+  message   String
+  createdAt DateTime @default(now())
+  isRead    Boolean  @default(false)
+  budget    Budget   @relation(fields: [budgetId], references: [id])
 }
 
 model AiSuggestion {
-  id             String    @id @default(uuid())
-  user           User      @relation(fields: [userId], references: [id])
-  userId         String
-  title          String
-  suggestion     String
-  category       String    @default("BUDGET") // 'BUDGET', 'SAVINGS', 'SPENDING_PATTERN', 'INVESTMENT'
-  priority       String    @default("MEDIUM") // 'LOW', 'MEDIUM', 'HIGH'
-  isRead         Boolean   @default(false)
-  createdAt      DateTime  @default(now())
+  id         String   @id @default(uuid())
+  userId     String
+  title      String
+  suggestion String
+  createdAt  DateTime @default(now())
+  category   String   @default("BUDGET")
+  isRead     Boolean  @default(false)
+  priority   String   @default("MEDIUM")
+  user       User     @relation(fields: [userId], references: [id])
 }
 
 model MonthlyReport {
-  id             String    @id @default(uuid())
-  user           User      @relation(fields: [userId], references: [id])
-  userId         String
-  month          Int
-  year           Int
-  totalExpense   Decimal   @db.Decimal(12, 2)
-  totalIncome    Decimal   @db.Decimal(12, 2) @default(0)
-  netSavings     Decimal   @db.Decimal(12, 2) @default(0)
-  budgetStatus   String    @default("ON_TRACK") // 'UNDER_BUDGET', 'ON_TRACK', 'OVER_BUDGET'
-  generatedAt    DateTime  @default(now())
-  reportData     Json
-  aiInsights     Json?
+  id           String   @id @default(uuid())
+  userId       String
+  month        Int
+  year         Int
+  totalExpense Decimal  @db.Decimal(12, 2)
+  generatedAt  DateTime @default(now())
+  reportData   Json
+  aiInsights   Json?
+  budgetStatus String   @default("ON_TRACK")
+  netSavings   Decimal  @default(0) @db.Decimal(12, 2)
+  totalIncome  Decimal  @default(0) @db.Decimal(12, 2)
+  user         User     @relation(fields: [userId], references: [id])
 }
 
 model Notification {
-  id             String    @id @default(uuid())
-  user           User      @relation(fields: [userId], references: [id])
-  userId         String
-  title           String
-  message         String
-  type            String    // 'BUDGET_ALERT', 'RECURRING_EXPENSE', 'REPORT_READY', 'AI_SUGGESTION'
-  isRead          Boolean   @default(false)
-  createdAt       DateTime  @default(now())
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  type      String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
 }

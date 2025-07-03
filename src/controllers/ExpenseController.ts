@@ -6,7 +6,12 @@ export default class ExpenseController {
 
   createExpense = async (req: Request, res: Response) => {
     try {
-      const expense = await this.expenseService.createExpense(req.body);
+      const expenseData = {
+        ...req.body,
+        userId: req.user?.id || req.body.userId,
+      };
+
+      const expense = await this.expenseService.createExpense(expenseData);
       res.status(201).json({ success: true, data: expense });
     } catch (error) {
       res
@@ -17,9 +22,16 @@ export default class ExpenseController {
 
   getExpensesByUserId = async (req: Request, res: Response) => {
     try {
-      const { userId } = req.query;
+      const userId = req.user?.id || (req.query.userId as string);
+      if (!userId) {
+        return res.status(400).json({
+          success: false,
+          message: "User ID is required",
+        });
+      }
+
       const expenses = await this.expenseService.getExpensesByUserId(
-        userId as string,
+        userId,
         req.query
       );
       res.status(200).json({ success: true, data: expenses });
@@ -68,8 +80,13 @@ export default class ExpenseController {
 
   createRecurringExpense = async (req: Request, res: Response) => {
     try {
+      const recurringData = {
+        ...req.body,
+        userId: req.user?.id || req.body.userId,
+      };
+
       const recurring = await this.expenseService.createRecurringExpense(
-        req.body
+        recurringData
       );
       res.status(201).json({ success: true, data: recurring });
     } catch (error) {
@@ -81,9 +98,16 @@ export default class ExpenseController {
 
   getRecurringExpensesByUserId = async (req: Request, res: Response) => {
     try {
-      const { userId } = req.query;
+      const userId = req.user?.id || (req.query.userId as string);
+      if (!userId) {
+        return res.status(400).json({
+          success: false,
+          message: "User ID is required",
+        });
+      }
+
       const recurrings = await this.expenseService.getRecurringExpensesByUserId(
-        userId as string
+        userId
       );
       res.status(200).json({ success: true, data: recurrings });
     } catch (error) {
@@ -95,9 +119,17 @@ export default class ExpenseController {
 
   getExpenseSummary = async (req: Request, res: Response) => {
     try {
-      const { userId, startDate, endDate } = req.query;
+      const userId = req.user?.id || (req.query.userId as string);
+      if (!userId) {
+        return res.status(400).json({
+          success: false,
+          message: "User ID is required",
+        });
+      }
+
+      const { startDate, endDate } = req.query;
       const summary = await this.expenseService.getExpenseSummary(
-        userId as string,
+        userId,
         new Date(startDate as string),
         new Date(endDate as string)
       );
