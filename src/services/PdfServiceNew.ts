@@ -86,7 +86,10 @@ export class PdfServiceNew {
       // Generate PDF content
       this.generatePdfContent(doc, data);
 
-      // Save PDF
+      // Save PDF and rewrite the file if it already exists
+      if (fs.existsSync(filepath)) {
+        fs.unlinkSync(filepath);
+      }
       doc.save(filepath);
       console.log("PDF saved to:", filepath);
 
