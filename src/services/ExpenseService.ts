@@ -28,6 +28,8 @@ export interface UpdateExpenseData {
   amount?: number;
   note?: string;
   date?: Date;
+  isRecurring?: boolean;
+  recurringExpenseId?: string;
 }
 
 export class ExpenseService {
@@ -38,6 +40,13 @@ export class ExpenseService {
       // Ensure userId is provided
       if (!data.userId) {
         throw new Error("User ID is required");
+      }
+
+      // Validation: If isRecurring=true, recurringExpenseId must be present
+      if (data.isRecurring && !data.recurringExpenseId) {
+        throw new Error(
+          "recurringExpenseId is required when isRecurring is true"
+        );
       }
 
       // Convert date string to Date object if provided
@@ -63,6 +72,7 @@ export class ExpenseService {
           category: true,
           bankAccount: true,
           receipt: true,
+          recurringExpense: true, // Include the recurring expense data
         },
       });
 
@@ -102,6 +112,7 @@ export class ExpenseService {
           category: true,
           bankAccount: true,
           receipt: true,
+          recurringExpense: true, // Include the recurring expense data
         },
         orderBy: { date: "desc" },
       });
@@ -120,6 +131,7 @@ export class ExpenseService {
           category: true,
           bankAccount: true,
           receipt: true,
+          recurringExpense: true, // Include the recurring expense data
         },
       });
 
@@ -133,11 +145,23 @@ export class ExpenseService {
     try {
       const oldExpense = await this.prisma.expense.findUnique({
         where: { id },
-        select: { amount: true, bankAccountId: true },
+        select: {
+          amount: true,
+          bankAccountId: true,
+          isRecurring: true,
+          recurringExpenseId: true,
+        },
       });
 
       if (!oldExpense) {
         throw new Error("Expense not found");
+      }
+
+      // Validation: If isRecurring=true, recurringExpenseId must be present
+      if (data.isRecurring && !data.recurringExpenseId) {
+        throw new Error(
+          "recurringExpenseId is required when isRecurring is true"
+        );
       }
 
       const updateData: any = {};
@@ -146,6 +170,10 @@ export class ExpenseService {
         updateData.amount = new Decimal(data.amount);
       if (data.note !== undefined) updateData.note = data.note;
       if (data.date) updateData.date = data.date;
+      if (data.isRecurring !== undefined)
+        updateData.isRecurring = data.isRecurring;
+      if (data.recurringExpenseId !== undefined)
+        updateData.recurringExpenseId = data.recurringExpenseId;
 
       const expense = await this.prisma.expense.update({
         where: { id },
@@ -154,6 +182,7 @@ export class ExpenseService {
           category: true,
           bankAccount: true,
           receipt: true,
+          recurringExpense: true, // Include the recurring expense data
         },
       });
 

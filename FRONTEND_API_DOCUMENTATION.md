@@ -86,19 +86,6 @@ interface Expense {
 }
 ```
 
-### ExpenseType
-
-```typescript
-interface ExpenseType {
-  id: string;
-  name: string;
-  description?: string;
-  categoryId: string;
-  category?: ExpenseCategory;
-  createdAt: string;
-}
-```
-
 ### ExpenseCategory
 
 ```typescript
