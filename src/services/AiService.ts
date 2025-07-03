@@ -1,6 +1,6 @@
 import axios from "axios";
 import { prisma } from "../utils/prisma";
-import { PdfService, MonthlyReportData } from "./PdfService";
+import { PdfServiceNew, MonthlyReportData } from "./PdfServiceNew";
 
 export interface SpendingAnalysis {
   totalExpense: number;
@@ -23,10 +23,10 @@ const GEMINI_API_KEY = process.env.OPENAI_API_KEY;
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 export class AiService {
-  private pdfService: PdfService;
+  private pdfService: PdfServiceNew;
 
   constructor() {
-    this.pdfService = new PdfService();
+    this.pdfService = new PdfServiceNew();
   }
 
   private async callGemini(prompt: string, temperature = 0.3) {
@@ -366,7 +366,7 @@ export class AiService {
 
       const suggestions = await prisma.aiSuggestion.findMany({
         where,
-        orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
+        orderBy: [{ priority: "asc" }, { createdAt: "desc" }],
       });
 
       return suggestions;
@@ -482,7 +482,86 @@ export class AiService {
     return text.trim();
   }
 
-  private async generateAiInsights(data: any) {
+  private async generateAiInsights(data: any): Promise<{
+    summary: string;
+    keyInsights: string[];
+    recommendations: string[];
+    opportunities: string[];
+    riskFactors: string[];
+  }> {
+    const prompt = `You are a professional financial advisor analyzing a monthly expense report. Provide comprehensive, actionable financial insights.
+
+FINANCIAL DATA:
+- Total Income: $${data.totalIncome}
+- Total Expenses: $${data.totalExpense}
+- Net Savings: $${data.netSavings}
+- Savings Rate: ${
+      data.totalIncome > 0
+        ? ((data.netSavings / data.totalIncome) * 100).toFixed(1)
+        : 0
+    }%
+- Budget Status: ${data.budgetStatus || "No budget set"}
+- Budget Limit: $${data.budget?.amount || "N/A"}
+- Budget Utilization: ${data.budget?.percentage || "N/A"}%
+
+SPENDING BY CATEGORY:
+${data.categoryAnalysis
+  .map(
+    (cat: any) => `- ${cat.name}: $${cat.amount} (${cat.percentage}% of total)`
+  )
+  .join("\n")}
+
+EXPENSE TRENDS:
+${data.spendingTrends
+  .map((trend: any) => `- ${trend.month}: $${trend.amount}`)
+  .join("\n")}
+
+Based on this comprehensive financial data, provide detailed analysis in JSON format with these sections:
+
+{
+  "summary": "A comprehensive 2-3 sentence executive summary of the financial health and key highlights",
+  "keyInsights": [
+    "5-7 specific insights about spending patterns, financial health, and notable trends",
+    "Include insights about savings rate, budget performance, category analysis",
+    "Highlight any concerning patterns or positive achievements",
+    "Compare performance against financial best practices"
+  ],
+  "recommendations": [
+    "5-8 specific, actionable recommendations for improvement",
+    "Include strategies for expense reduction and optimization",
+    "Provide concrete steps to improve savings rate",
+    "Suggest budget adjustments or category rebalancing",
+    "Include short-term (1-3 months) actionable steps"
+  ],
+  "opportunities": [
+    "4-6 investment and growth opportunities based on current financial situation",
+    "Include specific investment suggestions (index funds, ETFs, emergency fund)",
+    "Suggest ways to increase income or optimize existing money",
+    "Recommend financial tools, apps, or strategies for wealth building",
+    "Include both conservative and growth-oriented options"
+  ],
+  "riskFactors": [
+    "3-5 financial risks and detailed mitigation strategies",
+    "Address overspending, inadequate emergency fund, budget issues",
+    "Include preventive measures and warning signs to watch",
+    "Provide specific action plans to address each risk"
+  ]
+}
+
+IMPORTANT GUIDELINES:
+- Be specific with dollar amounts and percentages when relevant
+- Provide actionable advice, not generic tips
+- Consider the user's income level for appropriate recommendations
+- Include both immediate (this month) and long-term (3-6 months) advice
+- Focus on practical, implementable strategies
+- Use financial best practices (20% savings rate, 50/30/20 rule, etc.) as benchmarks
+- Include specific investment vehicles, apps, or tools when appropriate
+- Address emergency fund adequacy (3-6 months of expenses)
+- Consider tax implications and optimization strategies
+- Provide risk-adjusted advice based on apparent financial stability
+
+Respond ONLY with valid JSON, no additional text or formatting.`;
+
     try {
       const prompt = `\n        Analyze this financial data and provide insights in JSON format:\n        Monthly Summary:\n        - Total Expense: $${
         data.totalExpense

@@ -61,5 +61,16 @@ export default function createAiRoutes(aiController: AiController) {
     aiController.markSuggestionAsRead
   );
 
+  /**
+   * @swagger
+   * /ai/reports:
+   *   get:
+   *     summary: List all user reports
+   *     tags: [AI]
+   *     security:
+   *       - bearerAuth: []
+   */
+  router.get("/reports", authenticateToken, aiController.listUserReports);
+
   return router;
 }
