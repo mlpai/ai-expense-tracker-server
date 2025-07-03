@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import axios from "axios";
 import { Decimal } from "@prisma/client/runtime/library";
 import { PrismaClient } from "../../generated/prisma";
 
@@ -19,13 +19,27 @@ export interface AiSuggestionData {
   priority: "LOW" | "MEDIUM" | "HIGH";
 }
 
-export class AiService {
-  private openai: OpenAI;
+const GEMINI_API_KEY = process.env.OPENAI_API_KEY;
+const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
 
-  constructor(private readonly prisma: PrismaClient) {
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
+export class AiService {
+  constructor(private readonly prisma: PrismaClient) {}
+
+  private async callGemini(prompt: string, temperature = 0.3) {
+    const body = {
+      contents: [
+        {
+          parts: [{ text: prompt }],
+        },
+      ],
+      generationConfig: { temperature },
+    };
+    const response = await axios.post(GEMINI_API_URL, body);
+    const candidates = response.data.candidates;
+    if (!candidates || !candidates[0]?.content?.parts?.[0]?.text) {
+      throw new Error("No response from Gemini");
+    }
+    return candidates[0].content.parts[0].text;
   }
 
   async generateMonthlyReport(userId: string, month: number, year: number) {
@@ -328,50 +342,20 @@ export class AiService {
 
   private async generateAiInsights(data: any) {
     try {
-      const prompt = `
-        Analyze this financial data and provide insights in JSON format:
-        
-        Monthly Summary:
-        - Total Expense: $${data.totalExpense}
-        - Total Income: $${data.totalIncome}
-        - Net Savings: $${data.netSavings}
-        - Budget Status: ${data.budgetStatus}
-        
-        Top Spending Categories: ${JSON.stringify(data.categoryAnalysis)}
-        Spending Trends: ${JSON.stringify(data.spendingTrends)}
-        Unusual Expenses: ${JSON.stringify(data.unusualExpenses)}
-        
-        Provide insights in this JSON format:
-        {
-          "summary": "Brief summary of financial health",
-          "keyInsights": ["insight1", "insight2", "insight3"],
-          "recommendations": ["recommendation1", "recommendation2", "recommendation3"],
-          "riskFactors": ["risk1", "risk2"],
-          "opportunities": ["opportunity1", "opportunity2"]
-        }
-      `;
-
-      const completion = await this.openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a financial advisor. Analyze spending patterns and provide actionable insights.",
-          },
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-        temperature: 0.3,
-      });
-
-      const responseText = completion.choices[0]?.message?.content;
-      if (!responseText) {
-        throw new Error("No response from AI");
-      }
-
+      const prompt = `\n        Analyze this financial data and provide insights in JSON format:\n        Monthly Summary:\n        - Total Expense: $${
+        data.totalExpense
+      }\n        - Total Income: $${
+        data.totalIncome
+      }\n        - Net Savings: $${data.netSavings}\n        - Budget Status: ${
+        data.budgetStatus
+      }\n        Top Spending Categories: ${JSON.stringify(
+        data.categoryAnalysis
+      )}\n        Spending Trends: ${JSON.stringify(
+        data.spendingTrends
+      )}\n        Unusual Expenses: ${JSON.stringify(
+        data.unusualExpenses
+      )}\n        Provide insights in this JSON format:\n        {\n          \"summary\": \"Brief summary of financial health\",\n          \"keyInsights\": [\"insight1\", \"insight2\", \"insight3\"],\n          \"recommendations\": [\"recommendation1\", \"recommendation2\", \"recommendation3\"],\n          \"riskFactors\": [\"risk1\", \"risk2\"],\n          \"opportunities\": [\"opportunity1\", \"opportunity2\"]\n        }\n      `;
+      const responseText = await this.callGemini(prompt, 0.3);
       return JSON.parse(responseText);
     } catch (error) {
       console.error("AI insights generation failed:", error);
@@ -437,55 +421,21 @@ export class AiService {
     currentBudget: any
   ) {
     try {
-      const prompt = `
-        Analyze this 3-month financial data and provide personalized suggestions:
-        
-        Monthly Data: ${JSON.stringify(monthlyData)}
-        Current Budget: ${
-          currentBudget
-            ? JSON.stringify({
-                limit: Number(currentBudget.amountLimit),
-                spent: Number(currentBudget.spentAmount),
-                percentage:
-                  (Number(currentBudget.spentAmount) /
-                    Number(currentBudget.amountLimit)) *
-                  100,
-              })
-            : "No budget set"
-        }
-        
-        Generate 3-5 suggestions in this JSON format:
-        [
-          {
-            "title": "Suggestion title",
-            "suggestion": "Detailed suggestion with actionable steps",
-            "category": "BUDGET|SAVINGS|SPENDING_PATTERN|INVESTMENT",
-            "priority": "LOW|MEDIUM|HIGH"
-          }
-        ]
-      `;
-
-      const completion = await this.openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a financial advisor providing personalized suggestions based on spending patterns.",
-          },
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-        temperature: 0.4,
-      });
-
-      const responseText = completion.choices[0]?.message?.content;
-      if (!responseText) {
-        throw new Error("No response from AI");
-      }
-
+      const prompt = `\n        Analyze this 3-month financial data and provide personalized suggestions:\n        Monthly Data: ${JSON.stringify(
+        monthlyData
+      )}\n        Current Budget: ${
+        currentBudget
+          ? JSON.stringify({
+              limit: Number(currentBudget.amountLimit),
+              spent: Number(currentBudget.spentAmount),
+              percentage:
+                (Number(currentBudget.spentAmount) /
+                  Number(currentBudget.amountLimit)) *
+                100,
+            })
+          : "No budget set"
+      }\n        Generate 3-5 suggestions in this JSON format:\n        [\n          {\n            \"title\": \"Suggestion title\",\n            \"suggestion\": \"Detailed suggestion with actionable steps\",\n            \"category\": \"BUDGET|SAVINGS|SPENDING_PATTERN|INVESTMENT\",\n            \"priority\": \"LOW|MEDIUM|HIGH\"\n          }\n        ]\n      `;
+      const responseText = await this.callGemini(prompt, 0.4);
       return JSON.parse(responseText);
     } catch (error) {
       console.error("AI suggestions generation failed:", error);

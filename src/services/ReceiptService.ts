@@ -1,5 +1,5 @@
 import { createWorker } from "tesseract.js";
-import OpenAI from "openai";
+import axios from "axios";
 import { v4 as uuidv4 } from "uuid";
 import path from "path";
 import fs from "fs";
@@ -24,13 +24,27 @@ export interface CreateReceiptData {
   imageUrl: string;
 }
 
-export class ReceiptService {
-  private openai: OpenAI;
+const GEMINI_API_KEY = process.env.OPENAI_API_KEY;
+const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
 
-  constructor(private readonly prisma: PrismaClient) {
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
+export class ReceiptService {
+  constructor(private readonly prisma: PrismaClient) {}
+
+  private async callGemini(prompt: string, temperature = 0.1) {
+    const body = {
+      contents: [
+        {
+          parts: [{ text: prompt }],
+        },
+      ],
+      generationConfig: { temperature },
+    };
+    const response = await axios.post(GEMINI_API_URL, body);
+    const candidates = response.data.candidates;
+    if (!candidates || !candidates[0]?.content?.parts?.[0]?.text) {
+      throw new Error("No response from Gemini");
+    }
+    return candidates[0].content.parts[0].text;
   }
 
   async createReceipt(data: CreateReceiptData) {
@@ -196,43 +210,8 @@ export class ReceiptService {
 
   private async processWithAI(ocrText: string): Promise<ProcessedReceiptData> {
     try {
-      const prompt = `
-        Analyze this receipt text and extract the following information in JSON format:
-        - merchant: The name of the store/merchant
-        - totalAmount: The total amount paid (number)
-        - date: The date of the receipt (ISO date string)
-        - items: Array of items with name, price, and quantity (if available)
-        - tax: Tax amount if present (number)
-        - tip: Tip amount if present (number)
-        - category: Suggested expense category (e.g., "Food & Dining", "Transportation", "Shopping", "Utilities", "Entertainment", "Healthcare", "Education", "Other")
-
-        Receipt text:
-        ${ocrText}
-
-        Return only valid JSON without any additional text.
-      `;
-
-      const completion = await this.openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a receipt analysis expert. Extract structured data from receipt text and return it as JSON.",
-          },
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-        temperature: 0.1,
-      });
-
-      const responseText = completion.choices[0]?.message?.content;
-      if (!responseText) {
-        throw new Error("No response from AI");
-      }
-
+      const prompt = `\n        Analyze this receipt text and extract the following information in JSON format:\n        - merchant: The name of the store/merchant\n        - totalAmount: The total amount paid (number)\n        - date: The date of the receipt (ISO date string)\n        - items: Array of items with name, price, and quantity (if available)\n        - tax: Tax amount if present (number)\n        - tip: Tip amount if present (number)\n        - category: Suggested expense category (e.g., \"Food & Dining\", \"Transportation\", \"Shopping\", \"Utilities\", \"Entertainment\", \"Healthcare\", \"Education\", \"Other\")\n        Receipt text:\n        ${ocrText}\n        Return only valid JSON without any additional text.\n      `;
+      const responseText = await this.callGemini(prompt, 0.1);
       const processedData = JSON.parse(responseText);
       return {
         ...processedData,

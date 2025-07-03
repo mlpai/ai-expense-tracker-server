@@ -33,9 +33,24 @@ export default class ExpenseController {
         });
       }
 
+      // Parse optional 'include' param as array
+      let include: string[] | undefined = undefined;
+      if (typeof req.query.include === "string") {
+        include = req.query.include
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+      }
+
+      // Parse startDate and endDate as Date objects if present
+      const filters: any = { ...req.query };
+      if (filters.startDate) filters.startDate = new Date(filters.startDate);
+      if (filters.endDate) filters.endDate = new Date(filters.endDate);
+
       const expenses = await this.expenseService.getExpensesByUserId(
         userId,
-        req.query
+        filters,
+        include
       );
       res.status(200).json({ success: true, data: expenses });
     } catch (error) {

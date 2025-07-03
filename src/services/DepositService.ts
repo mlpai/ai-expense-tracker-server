@@ -53,7 +53,8 @@ export class DepositService {
       endDate?: Date;
       bankAccountId?: string;
       depositTypeId?: string;
-    }
+    },
+    includeFields?: string[]
   ) {
     try {
       const where: any = { userId };
@@ -67,12 +68,22 @@ export class DepositService {
       if (filters?.bankAccountId) where.bankAccountId = filters.bankAccountId;
       if (filters?.depositTypeId) where.depositTypeId = filters.depositTypeId;
 
-      const deposits = await this.prisma.deposit.findMany({
-        where,
-        include: {
+      // Build include object dynamically
+      let include: any = undefined;
+      if (Array.isArray(includeFields) && includeFields.length > 0) {
+        include = {};
+        if (includeFields.includes("depositType")) include.depositType = true;
+        if (includeFields.includes("bankAccount")) include.bankAccount = true;
+      } else {
+        include = {
           depositType: true,
           bankAccount: true,
-        },
+        };
+      }
+
+      const deposits = await this.prisma.deposit.findMany({
+        where,
+        include,
         orderBy: { date: "desc" },
       });
 

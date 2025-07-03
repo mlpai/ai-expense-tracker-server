@@ -92,7 +92,8 @@ export class ExpenseService {
       endDate?: Date;
       bankAccountId?: string;
       categoryId?: string;
-    }
+    },
+    includeFields?: string[]
   ) {
     try {
       const where: any = { userId };
@@ -106,14 +107,27 @@ export class ExpenseService {
       if (filters?.bankAccountId) where.bankAccountId = filters.bankAccountId;
       if (filters?.categoryId) where.categoryId = filters.categoryId;
 
-      const expenses = await this.prisma.expense.findMany({
-        where,
-        include: {
+      // Build include object dynamically
+      let include: any = undefined;
+      if (Array.isArray(includeFields) && includeFields.length > 0) {
+        include = {};
+        if (includeFields.includes("category")) include.category = true;
+        if (includeFields.includes("bankAccount")) include.bankAccount = true;
+        if (includeFields.includes("receipt")) include.receipt = true;
+        if (includeFields.includes("recurringExpense"))
+          include.recurringExpense = true;
+      } else {
+        include = {
           category: true,
           bankAccount: true,
           receipt: true,
-          recurringExpense: true, // Include the recurring expense data
-        },
+          recurringExpense: true,
+        };
+      }
+
+      const expenses = await this.prisma.expense.findMany({
+        where,
+        include,
         orderBy: { date: "desc" },
       });
 
