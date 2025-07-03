@@ -215,5 +215,125 @@ export default function createAccountRoutes(
    */
   router.post("/", authenticateToken, accountController.createAccount);
 
+  /**
+   * @openapi
+   * /api/v1/accounts/{id}:
+   *   put:
+   *     summary: Update an account
+   *     description: Updates an existing account by ID
+   *     tags:
+   *       - Accounts
+   *     parameters:
+   *       - name: id
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: The ID of the account to update
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               name:
+   *                 type: string
+   *                 description: Account name
+   *               accountNumber:
+   *                 type: string
+   *                 description: Bank account number
+   *               balance:
+   *                 type: number
+   *                 description: Current balance
+   *               bankName:
+   *                 type: string
+   *                 description: Name of the bank
+   *               isDefault:
+   *                 type: boolean
+   *                 description: Whether this is the default account
+   *     responses:
+   *       200:
+   *         description: Account updated successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   description: Indicates if the request was successful
+   *                 data:
+   *                   type: object
+   *                   properties:
+   *                     id:
+   *                       type: string
+   *                       description: Bank account ID
+   *                     accountNumber:
+   *                       type: string
+   *                       description: Bank account number
+   *                     bankName:
+   *                       type: string
+   *                       description: Name of the bank
+   *                     balance:
+   *                       type: number
+   *                       description: Current balance
+   *                     userId:
+   *                       type: string
+   *                       description: User ID who owns this account
+   *               required:
+   *                 - success
+   *                 - data
+   *       404:
+   *         description: Account not found
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *                   description: Error message
+   *                 status:
+   *                   type: number
+   *                   description: HTTP status code
+   *               required:
+   *                 - message
+   *                 - status
+   *       400:
+   *         description: Bad request
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *                   description: Error message
+   *                 status:
+   *                   type: number
+   *                   description: HTTP status code
+   *               required:
+   *                 - message
+   *                 - status
+   *       500:
+   *         description: Internal server error
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *                   description: Error message
+   *                 status:
+   *                   type: number
+   *                   description: HTTP status code
+   *               required:
+   *                 - message
+   *                 - status
+   */
+  router.put("/:id", authenticateToken, accountController.updateAccount);
+
   return router;
 }

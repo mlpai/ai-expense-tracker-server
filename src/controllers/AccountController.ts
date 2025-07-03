@@ -29,4 +29,14 @@ export default class AccountController {
       data: account,
     });
   };
+
+  updateAccount = async (req: Request, res: Response) => {
+    const id = req.params.id;
+    const updateData = req.body;
+    const account = await this.accountService.updateAccount(id, updateData);
+    res.status(200).json({
+      success: true,
+      data: account,
+    });
+  };
 }

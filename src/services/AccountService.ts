@@ -41,4 +41,19 @@ export class AccountService {
       throw new Error("Failed to create account");
     }
   }
+
+  async updateAccount(id: string, updateData: Partial<BankAccount>) {
+    try {
+      const updatedAccount = await this.prisma.bankAccount.update({
+        where: {
+          id,
+        },
+        data: updateData,
+      });
+      return updatedAccount;
+    } catch (error) {
+      console.log(error);
+      throw new Error("Failed to update account");
+    }
+  }
 }
