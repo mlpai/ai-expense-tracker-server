@@ -137,6 +137,120 @@ class CronJobs {
     });
   }
 
+  // TEMPORARY: Expose public async methods to run each cron job manually
+  async runProcessRecurringExpenses() {
+    try {
+      const processedExpenses =
+        await this.expenseService.processRecurringExpenses();
+      return { success: true, processedExpenses };
+    } catch (error) {
+      return { success: false, error: (error as Error).message };
+    }
+  }
+
+  async runGenerateMonthlyReports() {
+    try {
+      const now = new Date();
+      const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const users = await prisma.user.findMany();
+      const results = [];
+      for (const user of users) {
+        try {
+          await this.aiService.generateMonthlyReport(
+            user.id,
+            lastMonth.getMonth() + 1,
+            lastMonth.getFullYear()
+          );
+          results.push({ userId: user.id, success: true });
+        } catch (error) {
+          results.push({
+            userId: user.id,
+            success: false,
+            error: (error as Error).message,
+          });
+        }
+      }
+      return { success: true, results };
+    } catch (error) {
+      return { success: false, error: (error as Error).message };
+    }
+  }
+
+  async runGenerateAiSuggestions() {
+    try {
+      const users = await prisma.user.findMany();
+      const results = [];
+      for (const user of users) {
+        try {
+          await this.aiService.generateAiSuggestions(user.id);
+          results.push({ userId: user.id, success: true });
+        } catch (error) {
+          results.push({
+            userId: user.id,
+            success: false,
+            error: (error as Error).message,
+          });
+        }
+      }
+      return { success: true, results };
+    } catch (error) {
+      return { success: false, error: (error as Error).message };
+    }
+  }
+
+  async runCheckBudgetThresholds() {
+    try {
+      const budgets = await prisma.budget.findMany({ include: { user: true } });
+      const results = [];
+      for (const budget of budgets) {
+        try {
+          await this.budgetService.recalculateBudgetSpending(budget.id);
+          results.push({
+            budgetId: budget.id,
+            userId: budget.userId,
+            success: true,
+          });
+        } catch (error) {
+          results.push({
+            budgetId: budget.id,
+            userId: budget.userId,
+            success: false,
+            error: (error as Error).message,
+          });
+        }
+      }
+      return { success: true, results };
+    } catch (error) {
+      return { success: false, error: (error as Error).message };
+    }
+  }
+
+  async runCleanupOldNotifications() {
+    try {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const deletedCount = await prisma.notification.deleteMany({
+        where: {
+          createdAt: { lt: thirtyDaysAgo },
+          isRead: true,
+        },
+      });
+      return { success: true, deleted: deletedCount.count };
+    } catch (error) {
+      return { success: false, error: (error as Error).message };
+    }
+  }
+
+  async runAllCrons() {
+    return {
+      processRecurring: await this.runProcessRecurringExpenses(),
+      monthlyReports: await this.runGenerateMonthlyReports(),
+      aiSuggestions: await this.runGenerateAiSuggestions(),
+      budgetThresholds: await this.runCheckBudgetThresholds(),
+      cleanupNotifications: await this.runCleanupOldNotifications(),
+    };
+  }
+
   // Start all cron jobs
   start() {
     console.log("Starting cron jobs...");

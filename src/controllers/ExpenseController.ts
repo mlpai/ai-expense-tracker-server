@@ -1,5 +1,8 @@
 import { Request, Response } from "express";
 import { ExpenseService } from "../services/ExpenseService";
+import CronJobs from "../cron";
+
+const cronJobs = new CronJobs();
 
 export default class ExpenseController {
   constructor(private readonly expenseService: ExpenseService) {}
@@ -139,5 +142,37 @@ export default class ExpenseController {
         .status(400)
         .json({ success: false, message: (error as Error).message });
     }
+  };
+}
+
+export class CronDebugController {
+  runAllCrons = async (req: Request, res: Response) => {
+    const result = await cronJobs.runAllCrons();
+    res.status(200).json(result);
+  };
+
+  runProcessRecurringExpenses = async (req: Request, res: Response) => {
+    const result = await cronJobs.runProcessRecurringExpenses();
+    res.status(200).json(result);
+  };
+
+  runGenerateMonthlyReports = async (req: Request, res: Response) => {
+    const result = await cronJobs.runGenerateMonthlyReports();
+    res.status(200).json(result);
+  };
+
+  runGenerateAiSuggestions = async (req: Request, res: Response) => {
+    const result = await cronJobs.runGenerateAiSuggestions();
+    res.status(200).json(result);
+  };
+
+  runCheckBudgetThresholds = async (req: Request, res: Response) => {
+    const result = await cronJobs.runCheckBudgetThresholds();
+    res.status(200).json(result);
+  };
+
+  runCleanupOldNotifications = async (req: Request, res: Response) => {
+    const result = await cronJobs.runCleanupOldNotifications();
+    res.status(200).json(result);
   };
 }

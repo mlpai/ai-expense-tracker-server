@@ -24,6 +24,7 @@ import createAiRoutes from "./aiRoutes";
 import { ExpenseCategoryService } from "../services/ExpenseCategoryService";
 import ExpenseCategoryController from "../controllers/ExpenseCategoryController";
 import createExpenseCategoryRoutes from "./expenseCategoryRoutes";
+import cronDebugRoutes from "./cronDebugRoutes";
 
 const router = Router();
 
@@ -70,5 +71,6 @@ router.use("/receipts", receiptRoutes);
 router.use("/budgets", budgetRoutes);
 router.use("/ai", aiRoutes);
 router.use("/expense-categories", expenseCategoryRoutes);
+router.use("/cron-debug", cronDebugRoutes);
 
 export default router;
