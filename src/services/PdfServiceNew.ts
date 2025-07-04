@@ -48,7 +48,7 @@ export interface MonthlyReportData {
     summary: string;
     keyInsights: string[];
     recommendations: string[];
-    riskFactors: string[];
+    riskFactors: string[] | Array<{ risk: string; mitigation: string }>;
     opportunities: string[];
   };
   budget?: {
@@ -538,7 +538,8 @@ export class PdfServiceNew {
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(45, 55, 72);
-    const summaryLines = doc.splitTextToSize(data.aiInsights.summary, 160);
+    const cleanSummary = this.cleanText(data.aiInsights.summary);
+    const summaryLines = doc.splitTextToSize(cleanSummary, 160);
     doc.text(summaryLines, 25, yPosition + 16);
 
     yPosition += Math.max(30, summaryLines.length * 3 + 15);
@@ -607,8 +608,24 @@ export class PdfServiceNew {
         doc.setFont("helvetica", "normal");
         doc.setTextColor(45, 55, 72);
 
-        // Clean text to remove any special characters
-        const cleanItem = this.cleanText(item);
+        // Handle risk factors that might be objects with risk/mitigation properties
+        let cleanItem: string;
+        if (
+          section.title === "Risk Factors & Mitigation" &&
+          typeof item === "object" &&
+          item !== null
+        ) {
+          const riskObj = item as any;
+          if (riskObj.risk && riskObj.mitigation) {
+            cleanItem = `${this.cleanText(
+              riskObj.risk
+            )} - Mitigation: ${this.cleanText(riskObj.mitigation)}`;
+          } else {
+            cleanItem = this.cleanText(item);
+          }
+        } else {
+          cleanItem = this.cleanText(item);
+        }
 
         // Numbered bullets for better readability
         const bulletNumber = `${index + 1}.`;
@@ -707,6 +724,7 @@ export class PdfServiceNew {
       .replace(/[\u{1F900}-\u{1F9FF}]/gu, "") // supplemental symbols
       .replace(/[\u{1F1E0}-\u{1F1FF}]/gu, "") // flags
       .replace(/[^\x00-\x7F]/g, "") // remove non-ASCII characters
+      .replace(/\s+/g, " ") // replace multiple whitespace with single space
       .trim();
   }
 
