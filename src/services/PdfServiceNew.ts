@@ -30,6 +30,20 @@ export interface MonthlyReportData {
     amount: number;
     date: string;
   }>;
+  expensePatterns?: {
+    dailyAverage: number;
+    recurring: {
+      count: number;
+      amount: number;
+      percentage: number;
+    };
+    weekdaySpending: Array<{
+      day: string;
+      amount: number;
+      percentage: number;
+    }>;
+    topExpenseNotes: string[];
+  };
   aiInsights: {
     summary: string;
     keyInsights: string[];
@@ -69,6 +83,21 @@ export class PdfServiceNew {
         fs.mkdirSync(userFolder, { recursive: true });
       }
       console.log("User folder:", userFolder);
+
+      // Remove old PDFs for the same month/year before generating new one
+      const periodPrefix = `monthly-report-${data.reportPeriod.year}-${String(
+        data.reportPeriod.month
+      ).padStart(2, "0")}`;
+      fs.readdirSync(userFolder)
+        .filter((f) => f.startsWith(periodPrefix) && f.endsWith(".pdf"))
+        .forEach((oldFile) => {
+          try {
+            fs.unlinkSync(path.join(userFolder, oldFile));
+            console.log("Deleted old report:", oldFile);
+          } catch (err) {
+            console.warn("Could not delete old report", oldFile, err);
+          }
+        });
 
       // Create new PDF document
       const doc = new jsPDF({
@@ -168,6 +197,9 @@ export class PdfServiceNew {
     // Spending Trends
     yPosition = this.addSpendingTrends(doc, data, yPosition);
 
+    // Expense Patterns
+    yPosition = this.addExpensePatterns(doc, data, yPosition);
+
     // New page for AI insights
     doc.addPage();
     yPosition = 20;
@@ -217,19 +249,19 @@ export class PdfServiceNew {
     const cards = [
       {
         title: "Total Income",
-        value: `$${data.totalIncome.toLocaleString()}`,
+        value: `₹${data.totalIncome.toLocaleString("en-IN")}`,
         color: [34, 197, 94], // green
         bgColor: [240, 253, 244],
       },
       {
         title: "Total Expenses",
-        value: `$${data.totalExpense.toLocaleString()}`,
+        value: `₹${data.totalExpense.toLocaleString("en-IN")}`,
         color: [239, 68, 68], // red
         bgColor: [254, 242, 242],
       },
       {
         title: "Net Savings",
-        value: `$${data.netSavings.toLocaleString()}`,
+        value: `₹${data.netSavings.toLocaleString("en-IN")}`,
         color: data.netSavings >= 0 ? [34, 197, 94] : [239, 68, 68],
         bgColor: data.netSavings >= 0 ? [240, 253, 244] : [254, 242, 242],
       },
@@ -279,7 +311,7 @@ export class PdfServiceNew {
     doc.setFontSize(16);
     doc.setFont("helvetica", "bold");
     doc.text("Spending by Category", 20, yPosition);
-    yPosition += 15;
+    yPosition += 10;
 
     if (!data.categoryAnalysis || data.categoryAnalysis.length === 0) {
       doc.setFontSize(10);
@@ -288,71 +320,43 @@ export class PdfServiceNew {
       return yPosition + 15;
     }
 
-    // Table headers
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(0, 0, 0);
+    // Prepare table data
+    const head = [["Category", "Amount (₹)", "Percentage"]];
+    const body = data.categoryAnalysis.map((c: any) => [
+      this.cleanText(c.name || "Uncategorized"),
+      Number(c.amount).toLocaleString("en-IN"),
+      `${c.percentage}%`,
+    ]);
 
-    const tableStartY = yPosition;
-    const rowHeight = 8;
-
-    // Header background
-    doc.setFillColor(240, 240, 240);
-    doc.rect(20, tableStartY, 170, rowHeight, "F");
-
-    doc.text("Category", 25, tableStartY + 5);
-    doc.text("Amount", 90, tableStartY + 5);
-    doc.text("Percentage", 140, tableStartY + 5);
-
-    yPosition += rowHeight;
-
-    // Table rows
-    data.categoryAnalysis.forEach((category: any, index: number) => {
-      if (yPosition > 250) {
-        doc.addPage();
-        yPosition = 20;
-      }
-
-      // Alternating row colors
-      if (index % 2 === 0) {
-        doc.setFillColor(248, 248, 248);
-        doc.rect(20, yPosition, 170, rowHeight, "F");
-      }
-
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(0, 0, 0);
-
-      const cleanCategoryName = this.cleanText(
-        category.name || "Uncategorized"
-      );
-      doc.text(cleanCategoryName, 25, yPosition + 5);
-      doc.text(
-        `$${Number(category.amount).toLocaleString()}`,
-        90,
-        yPosition + 5
-      );
-      doc.text(`${category.percentage}%`, 140, yPosition + 5);
-
-      // Progress bar
-      const barWidth = 30;
-      const barHeight = 3;
-      const barX = 155;
-      const barY = yPosition + 3;
-
-      // Background bar
-      doc.setFillColor(230, 230, 230);
-      doc.rect(barX, barY, barWidth, barHeight, "F");
-
-      // Progress bar
-      const progressWidth = (category.percentage / 100) * barWidth;
-      doc.setFillColor(59, 130, 246);
-      doc.rect(barX, barY, progressWidth, barHeight, "F");
-
-      yPosition += rowHeight;
+    // Use autoTable to render neatly
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    autoTable(doc, {
+      head,
+      body,
+      startY: yPosition,
+      theme: "grid",
+      headStyles: {
+        fillColor: [240, 240, 240],
+        textColor: 0,
+        fontStyle: "bold",
+      },
+      styles: {
+        font: "helvetica",
+        fontSize: 9,
+        cellPadding: 2,
+      },
+      columnStyles: {
+        1: { halign: "right" },
+        2: { halign: "right" },
+      },
     });
 
-    return yPosition + 10;
+    // Retrieve the Y coordinate after table to continue content
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    const finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY : yPosition;
+    return finalY + 10;
   }
 
   private addSpendingTrends(
@@ -425,12 +429,85 @@ export class PdfServiceNew {
     doc.setFontSize(8);
     doc.setTextColor(100, 100, 100);
     doc.text(
-      `Max: $${maxAmount.toLocaleString()}`,
+      `Max: ₹${maxAmount.toLocaleString("en-IN")}`,
       chartX + chartWidth - 30,
       chartY - 2
     );
 
     return yPosition + chartHeight + 20;
+  }
+
+  private addExpensePatterns(
+    doc: jsPDF,
+    data: MonthlyReportData,
+    yPosition: number
+  ): number {
+    if (!data.expensePatterns) return yPosition;
+
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text("Expense Patterns", 20, yPosition);
+    yPosition += 15;
+
+    // Expense Patterns content
+    const { dailyAverage, recurring, weekdaySpending, topExpenseNotes } =
+      data.expensePatterns;
+
+    // Build table rows
+    const rows: Array<[string, string]> = [];
+    rows.push([
+      "Daily Avg Spend",
+      `₹${dailyAverage.toLocaleString("en-IN", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}`,
+    ]);
+
+    rows.push([
+      "Recurring Expenses",
+      `${recurring.count} txn${
+        recurring.count !== 1 ? "s" : ""
+      }  |  ₹${recurring.amount.toLocaleString("en-IN")}  (${
+        recurring.percentage
+      }%)`,
+    ]);
+
+    const topWeekdays = [...weekdaySpending]
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 3);
+    rows.push([
+      "Busiest Weekdays",
+      topWeekdays.map((w) => `${w.day} (${w.percentage}%)`).join(", "),
+    ]);
+
+    rows.push([
+      "Common Note Keywords",
+      topExpenseNotes && topExpenseNotes.length > 0
+        ? topExpenseNotes.join(", ")
+        : "—",
+    ]);
+
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    autoTable(doc, {
+      head: [["Metric", "Value"]],
+      body: rows,
+      startY: yPosition,
+      theme: "striped",
+      headStyles: { fillColor: [240, 240, 240], textColor: 0 },
+      styles: { font: "helvetica", fontSize: 9, cellPadding: 2 },
+      columnStyles: {
+        0: { cellWidth: 50 },
+        1: { cellWidth: 110 },
+      },
+    });
+
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    const finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY : yPosition;
+    yPosition = finalY;
+
+    return yPosition + 10;
   }
 
   private addAiInsights(

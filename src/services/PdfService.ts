@@ -193,17 +193,17 @@ export class PdfService {
     const cards = [
       {
         title: "Total Income",
-        value: `$${data.totalIncome.toLocaleString()}`,
+        value: `₹${data.totalIncome.toLocaleString("en-IN")}`,
         color: [34, 197, 94],
       },
       {
         title: "Total Expenses",
-        value: `$${data.totalExpense.toLocaleString()}`,
+        value: `₹${data.totalExpense.toLocaleString("en-IN")}`,
         color: [239, 68, 68],
       },
       {
         title: "Net Savings",
-        value: `$${data.netSavings.toLocaleString()}`,
+        value: `₹${data.netSavings.toLocaleString("en-IN")}`,
         color: data.netSavings >= 0 ? [34, 197, 94] : [239, 68, 68],
       },
       {
@@ -245,7 +245,7 @@ export class PdfService {
         doc.setFontSize(7);
         doc.setTextColor(113, 128, 150);
         doc.text(
-          `$${data.budget.spent} of $${data.budget.limit}`,
+          `₹${data.budget.spent} of ₹${data.budget.limit}`,
           x + cardWidth / 2,
           yPosition + 28,
           { align: "center" }
@@ -276,7 +276,7 @@ export class PdfService {
       // Create table data
       const tableData = data.categoryAnalysis.map((category) => [
         category.name,
-        `$${category.amount.toLocaleString()}`,
+        `₹${category.amount.toLocaleString("en-IN")}`,
         `${category.percentage}%`,
       ]);
 
@@ -356,7 +356,7 @@ export class PdfService {
           doc.setFontSize(6);
           doc.setTextColor(255, 255, 255);
           doc.text(
-            `$${trend.amount}`,
+            `₹${trend.amount}`,
             x + (barWidth - 4) / 2,
             y + barHeight / 2,
             { align: "center" }

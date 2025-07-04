@@ -62,55 +62,31 @@ export class AiService {
         },
       });
 
-      let reportData;
+      // Always recalculate fresh data
+      const reportData = await this.calculateMonthlyData(userId, month, year);
 
+      // If an old report exists for the same month & year, delete it first
       if (existingReport) {
-        // Update existing report with fresh data
-        reportData = await this.calculateMonthlyData(userId, month, year);
-
-        await prisma.monthlyReport.update({
-          where: { id: existingReport.id },
-          data: {
-            totalExpense: reportData.totalExpense,
-            totalIncome: reportData.totalIncome,
-            netSavings: reportData.netSavings,
-            budgetStatus: reportData.budgetStatus,
-            reportData: {
-              categoryAnalysis: reportData.categoryAnalysis,
-              spendingTrends: reportData.spendingTrends,
-              unusualExpenses: reportData.unusualExpenses || [],
-              budget: reportData.budget,
-            },
-            aiInsights: reportData.aiInsights,
-          },
-        });
-
-        console.log(`Updated existing monthly report for ${month}/${year}`);
-      } else {
-        // Create new report
-        reportData = await this.calculateMonthlyData(userId, month, year);
-
-        await prisma.monthlyReport.create({
-          data: {
-            userId,
-            month,
-            year,
-            totalExpense: reportData.totalExpense,
-            totalIncome: reportData.totalIncome,
-            netSavings: reportData.netSavings,
-            budgetStatus: reportData.budgetStatus,
-            reportData: {
-              categoryAnalysis: reportData.categoryAnalysis,
-              spendingTrends: reportData.spendingTrends,
-              unusualExpenses: reportData.unusualExpenses || [],
-              budget: reportData.budget,
-            },
-            aiInsights: reportData.aiInsights,
-          },
-        });
-
-        console.log(`Created new monthly report for ${month}/${year}`);
+        await prisma.monthlyReport.delete({ where: { id: existingReport.id } });
+        console.log(`Deleted existing monthly report for ${month}/${year}`);
       }
+
+      // Create new report record with latest data
+      await prisma.monthlyReport.create({
+        data: {
+          userId,
+          month,
+          year,
+          totalExpense: reportData.totalExpense,
+          totalIncome: reportData.totalIncome,
+          netSavings: reportData.netSavings,
+          budgetStatus: reportData.budgetStatus,
+          reportData: reportData,
+          aiInsights: reportData.aiInsights,
+        },
+      });
+
+      console.log(`Generated new monthly report for ${month}/${year}`);
 
       // Generate PDF if requested
       let pdfUrl = null;
@@ -145,9 +121,9 @@ export class AiService {
       return {
         ...reportData,
         pdfUrl,
-        isUpdated: !!existingReport,
+        isRecreated: !!existingReport,
         message: existingReport
-          ? "Report updated with latest data"
+          ? "Old report replaced with new data"
           : "New report generated",
       };
     } catch (error) {
@@ -205,6 +181,48 @@ export class AiService {
     );
     const netSavings = totalIncome - totalExpense;
 
+    // Expense patterns & additional analytics
+    const daysInMonth = endDate.getDate();
+    const dailyAverage = daysInMonth ? totalExpense / daysInMonth : 0;
+
+    // Week-day spending distribution
+    const weekdayAmounts: number[] = new Array(7).fill(0);
+    expenses.forEach((exp: any) => {
+      const dayIdx = new Date(exp.date).getDay(); // 0 (Sun) – 6 (Sat)
+      weekdayAmounts[dayIdx] += Number(exp.amount);
+    });
+    const weekdaySpending = weekdayAmounts.map((amount, idx) => ({
+      day: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][idx],
+      amount,
+      percentage:
+        totalExpense > 0 ? Math.round((amount / totalExpense) * 100) : 0,
+    }));
+
+    // Recurring expenses summary
+    const recurringExpenses = expenses.filter((e: any) => e.isRecurring);
+    const recurringAmount = recurringExpenses.reduce(
+      (sum: number, exp: any) => sum + Number(exp.amount),
+      0
+    );
+
+    // Compile expense patterns object
+    const expensePatterns = {
+      dailyAverage,
+      recurring: {
+        count: recurringExpenses.length,
+        amount: recurringAmount,
+        percentage:
+          totalExpense > 0
+            ? Math.round((recurringAmount / totalExpense) * 100)
+            : 0,
+      },
+      weekdaySpending,
+      topExpenseNotes: this.getTopExpenseNoteKeywords(expenses),
+    };
+
+    // Detect unusual expenses
+    const unusualExpenses = this.findUnusualExpenses(expenses);
+
     // Calculate budget status
     let budgetStatus = "NO_BUDGET";
     if (budget) {
@@ -249,6 +267,8 @@ export class AiService {
       budgetStatus,
       categoryAnalysis,
       spendingTrends,
+      unusualExpenses,
+      expensePatterns,
       budget: budget
         ? {
             limit: Number(budget.amountLimit),
@@ -263,15 +283,8 @@ export class AiService {
     const aiInsights = await this.generateAiInsights(monthlyData);
 
     return {
-      totalExpense,
-      totalIncome,
-      netSavings,
-      budgetStatus,
-      categoryAnalysis,
-      spendingTrends,
-      unusualExpenses: [], // Could be enhanced to detect unusual expenses
+      ...monthlyData,
       aiInsights,
-      budget: monthlyData.budget,
     };
   }
 
@@ -482,6 +495,26 @@ export class AiService {
     return text.trim();
   }
 
+  private getTopExpenseNoteKeywords(expenses: any[]): string[] {
+    const wordMap = new Map<string, number>();
+    expenses.forEach((expense: any) => {
+      if (expense.note) {
+        expense.note
+          .toLowerCase()
+          .split(/[\s,.;:"'!?()]+/)
+          .filter((w: string) => w.length > 3)
+          .forEach((word: string) => {
+            wordMap.set(word, (wordMap.get(word) || 0) + 1);
+          });
+      }
+    });
+
+    return Array.from(wordMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([word]) => word);
+  }
+
   private async generateAiInsights(data: any): Promise<{
     summary: string;
     keyInsights: string[];
@@ -489,32 +522,44 @@ export class AiService {
     opportunities: string[];
     riskFactors: string[];
   }> {
-    const prompt = `You are a professional financial advisor analyzing a monthly expense report. Provide comprehensive, actionable financial insights.
+    const promptTemplate = `You are a professional financial advisor analyzing a monthly expense report. Provide comprehensive, actionable financial insights.
 
 FINANCIAL DATA:
-- Total Income: $${data.totalIncome}
-- Total Expenses: $${data.totalExpense}
-- Net Savings: $${data.netSavings}
+- Total Income: ₹${data.totalIncome}
+- Total Expenses: ₹${data.totalExpense}
+- Net Savings: ₹${data.netSavings}
 - Savings Rate: ${
       data.totalIncome > 0
         ? ((data.netSavings / data.totalIncome) * 100).toFixed(1)
         : 0
     }%
 - Budget Status: ${data.budgetStatus || "No budget set"}
-- Budget Limit: $${data.budget?.amount || "N/A"}
+- Budget Limit: ₹${data.budget?.amount || "N/A"}
 - Budget Utilization: ${data.budget?.percentage || "N/A"}%
 
 SPENDING BY CATEGORY:
 ${data.categoryAnalysis
   .map(
-    (cat: any) => `- ${cat.name}: $${cat.amount} (${cat.percentage}% of total)`
+    (cat: any) => `- ${cat.name}: ₹${cat.amount} (${cat.percentage}% of total)`
   )
   .join("\n")}
 
 EXPENSE TRENDS:
 ${data.spendingTrends
-  .map((trend: any) => `- ${trend.month}: $${trend.amount}`)
+  .map((trend: any) => `- ${trend.month}: ₹${trend.amount}`)
   .join("\n")}
+
+EXPENSE PATTERNS:
+- Average Daily Spend: ₹${data.expensePatterns.dailyAverage.toFixed(2)}
+- Recurring Expenses: ₹${data.expensePatterns.recurring.amount} (${
+      data.expensePatterns.recurring.percentage
+    }% of total) across ${data.expensePatterns.recurring.count} transactions
+- Weekday Spending: ${data.expensePatterns.weekdaySpending
+      .map((w: any) => `${w.day}: ₹${w.amount} (${w.percentage}%)`)
+      .join(", ")}
+- Common Expense Note Keywords: ${data.expensePatterns.topExpenseNotes.join(
+      ", "
+    )}
 
 Based on this comprehensive financial data, provide detailed analysis in JSON format with these sections:
 
@@ -563,20 +608,7 @@ IMPORTANT GUIDELINES:
 Respond ONLY with valid JSON, no additional text or formatting.`;
 
     try {
-      const prompt = `\n        Analyze this financial data and provide insights in JSON format:\n        Monthly Summary:\n        - Total Expense: $${
-        data.totalExpense
-      }\n        - Total Income: $${
-        data.totalIncome
-      }\n        - Net Savings: $${data.netSavings}\n        - Budget Status: ${
-        data.budgetStatus
-      }\n        Top Spending Categories: ${JSON.stringify(
-        data.categoryAnalysis
-      )}\n        Spending Trends: ${JSON.stringify(
-        data.spendingTrends
-      )}\n        Unusual Expenses: ${JSON.stringify(
-        data.unusualExpenses
-      )}\n        Provide insights in this JSON format:\n        {\n          \"summary\": \"Brief summary of financial health\",\n          \"keyInsights\": [\"insight1\", \"insight2\", \"insight3\"],\n          \"recommendations\": [\"recommendation1\", \"recommendation2\", \"recommendation3\"],\n          \"riskFactors\": [\"risk1\", \"risk2\"],\n          \"opportunities\": [\"opportunity1\", \"opportunity2\"]\n        }\n      `;
-      const responseText = await this.callGemini(prompt, 0.3);
+      const responseText = await this.callGemini(promptTemplate, 0.3);
       const cleanJson = this.extractJsonFromMarkdown(responseText);
       return JSON.parse(cleanJson);
     } catch (error) {

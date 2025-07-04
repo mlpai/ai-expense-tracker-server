@@ -220,9 +220,9 @@ export class BudgetService {
               alertType: "THRESHOLD_REACHED",
               message: `You've reached ${
                 budget.thresholdPercentage
-              }% of your budget limit. You've spent $${spentAmount.toFixed(
+              }% of your budget limit. You've spent ₹${spentAmount.toFixed(
                 2
-              )} out of $${limitAmount.toFixed(2)}.`,
+              )} out of ₹${limitAmount.toFixed(2)}.`,
             },
           });
         }
@@ -239,9 +239,9 @@ export class BudgetService {
             data: {
               budgetId,
               alertType: "EXCEEDED",
-              message: `You've exceeded your budget limit! You've spent $${spentAmount.toFixed(
+              message: `You've exceeded your budget limit! You've spent ₹${spentAmount.toFixed(
                 2
-              )} out of $${limitAmount.toFixed(2)}.`,
+              )} out of ₹${limitAmount.toFixed(2)}.`,
             },
           });
         }
