@@ -70,7 +70,10 @@ export class PdfServiceNew {
     }
   }
 
-  async generateMonthlyReportPdf(data: MonthlyReportData): Promise<string> {
+  async generateMonthlyReportPdf(
+    data: MonthlyReportData,
+    language: string = "en"
+  ): Promise<string> {
     try {
       console.log("Starting jsPDF generation...");
 

@@ -17,12 +17,13 @@ export default class AiController {
           message: "User ID is required",
         });
       }
-      const { month, year, generatePdf = true } = req.body;
+      const { month, year, generatePdf = true, language = "en" } = req.body;
       const report = await this.aiService.generateMonthlyReport(
         userId,
         Number(month),
         Number(year),
-        Boolean(generatePdf)
+        Boolean(generatePdf),
+        language
       );
       res.status(200).json({ success: true, data: report });
     } catch (error) {

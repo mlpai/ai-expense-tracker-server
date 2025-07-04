@@ -50,7 +50,8 @@ export class AiService {
     userId: string,
     month: number,
     year: number,
-    generatePdf: boolean = true
+    generatePdf: boolean = true,
+    language: string = "en"
   ) {
     try {
       // Check if report already exists for this month/year
@@ -63,7 +64,12 @@ export class AiService {
       });
 
       // Always recalculate fresh data
-      const reportData = await this.calculateMonthlyData(userId, month, year);
+      const reportData = await this.calculateMonthlyData(
+        userId,
+        month,
+        year,
+        language
+      );
 
       // If an old report exists for the same month & year, delete it first
       if (existingReport) {
@@ -110,7 +116,10 @@ export class AiService {
             ...reportData,
           };
 
-          pdfUrl = await this.pdfService.generateMonthlyReportPdf(pdfData);
+          pdfUrl = await this.pdfService.generateMonthlyReportPdf(
+            pdfData,
+            language
+          );
           console.log(`Generated PDF report: ${pdfUrl}`);
         } catch (pdfError) {
           console.warn(`Failed to generate PDF: ${pdfError}`);
@@ -134,7 +143,8 @@ export class AiService {
   private async calculateMonthlyData(
     userId: string,
     month: number,
-    year: number
+    year: number,
+    language: string = "en"
   ) {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0, 23, 59, 59);
@@ -280,7 +290,7 @@ export class AiService {
         : undefined,
     };
 
-    const aiInsights = await this.generateAiInsights(monthlyData);
+    const aiInsights = await this.generateAiInsights(monthlyData, language);
 
     return {
       ...monthlyData,
@@ -515,7 +525,10 @@ export class AiService {
       .map(([word]) => word);
   }
 
-  private async generateAiInsights(data: any): Promise<{
+  private async generateAiInsights(
+    data: any,
+    language: string
+  ): Promise<{
     summary: string;
     keyInsights: string[];
     recommendations: string[];
@@ -523,6 +536,8 @@ export class AiService {
     riskFactors: string[];
   }> {
     const promptTemplate = `You are a professional financial advisor analyzing a monthly expense report. Provide comprehensive, actionable financial insights.
+
+Respond in languge whose language code is ${language}.
 
 FINANCIAL DATA:
 - Total Income: ₹${data.totalIncome}
@@ -594,7 +609,7 @@ Based on this comprehensive financial data, provide detailed analysis in JSON fo
 }
 
 IMPORTANT GUIDELINES:
-- Be specific with dollar amounts and percentages when relevant
+- Be specific with amounts and percentages when relevant
 - Provide actionable advice, not generic tips
 - Consider the user's income level for appropriate recommendations
 - Include both immediate (this month) and long-term (3-6 months) advice
