@@ -688,11 +688,17 @@ export class PdfServiceNew {
     }
   }
 
-  private cleanText(text: string): string {
-    if (!text) return "";
+  private cleanText(text: unknown): string {
+    // Gracefully handle undefined/null values
+    if (text === undefined || text === null) {
+      return "";
+    }
+
+    // Convert non-string inputs to string representation to avoid runtime errors
+    let str = typeof text === "string" ? text : String(text);
 
     // Remove emoji and special characters that cause encoding issues
-    return text
+    return str
       .replace(/[\u{1F600}-\u{1F64F}]/gu, "") // emoticons
       .replace(/[\u{1F300}-\u{1F5FF}]/gu, "") // misc symbols
       .replace(/[\u{1F680}-\u{1F6FF}]/gu, "") // transport
